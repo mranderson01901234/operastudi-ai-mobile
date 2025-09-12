@@ -21,7 +21,7 @@ class ComparisonSlider extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: appState.isComparisonMode 
-                ? const Color(0xFF4CAF50) 
+                ? const Color(0xFF4A90E2) 
                 : const Color(0xFF404040),
               width: 1,
             ),
@@ -43,7 +43,7 @@ class ComparisonSlider extends StatelessWidget {
                   Switch(
                     value: appState.isComparisonMode,
                     onChanged: (_) => appState.toggleComparisonMode(),
-                    activeColor: const Color(0xFF4CAF50),
+                    activeColor: const Color(0xFF4A90E2),
                     inactiveThumbColor: const Color(0xFF707070),
                     inactiveTrackColor: const Color(0xFF404040),
                   ),
@@ -66,7 +66,7 @@ class ComparisonSlider extends StatelessWidget {
                       child: Slider(
                         value: appState.comparisonSliderValue,
                         onChanged: appState.updateComparisonSlider,
-                        activeColor: const Color(0xFF4CAF50),
+                        activeColor: const Color(0xFF4A90E2),
                         inactiveColor: const Color(0xFF404040),
                         min: 0.0,
                         max: 1.0,
