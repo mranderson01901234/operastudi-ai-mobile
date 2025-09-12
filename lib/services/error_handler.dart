@@ -328,10 +328,10 @@ class ErrorHandler {
       barrierDismissible: barrierDismissible,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: Colors.grey.shade900,
+          backgroundColor: Color(0xFF181A1B),
           title: Row(
             children: [
-              Icon(Icons.error_outline, color: Colors.red, size: 24),
+              Icon(Icons.error_outline, color: Color(0xFF4A90E2), size: 24),
               SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -350,7 +350,7 @@ class ErrorHandler {
               onPressed: () => Navigator.of(context).pop(),
               child: Text(
                 'OK',
-                style: TextStyle(color: Colors.blue),
+                style: TextStyle(color: Color(0xFF4A90E2)),
               ),
             ),
           ],
@@ -388,7 +388,7 @@ class ErrorHandler {
             ),
           ],
         ),
-        backgroundColor: Colors.red.shade700,
+        backgroundColor: Color(0xFF4A90E2),
         duration: duration,
         action: action,
         behavior: SnackBarBehavior.floating,
@@ -414,7 +414,7 @@ class ErrorHandler {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Use Gallery', style: TextStyle(color: Colors.blue)),
+            child: Text('Use Gallery', style: TextStyle(color: Color(0xFF4A90E2))),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
