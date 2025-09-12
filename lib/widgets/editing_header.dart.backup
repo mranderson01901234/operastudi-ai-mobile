@@ -1,0 +1,153 @@
+import 'package:flutter/material.dart';
+
+class EditingHeader extends StatelessWidget {
+  final bool showBackButton;
+  final VoidCallback? onBackPressed;
+  final VoidCallback? onInfoPressed;
+  final VoidCallback? onSharePressed;
+  final VoidCallback? onMenuPressed;
+  final VoidCallback? onResetPressed;
+  final VoidCallback? onSavePressed;
+
+  const EditingHeader({
+    super.key,
+    this.showBackButton = true,
+    this.onBackPressed,
+    this.onInfoPressed,
+    this.onSharePressed,
+    this.onMenuPressed,
+    this.onResetPressed,
+    this.onSavePressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1A1A1A),
+        border: Border(
+          bottom: BorderSide(
+            color: Color(0xFF3A3A3A),
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Left side - Back button
+          if (showBackButton)
+            IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios,
+                size: 20,
+                color: Colors.white,
+              ),
+              onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(
+          // App title on the left
+          const Text(
+            'opera',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          
+          const Spacer(),
+            child: Text(
+              'Edit',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          
+          const SizedBox(width: 8),
+          
+          // Right side - Action buttons
+          if (onResetPressed != null)
+            IconButton(
+              icon: const Icon(
+                Icons.refresh_outlined,
+                size: 20,
+                color: Colors.white,
+              ),
+              onPressed: onResetPressed,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(
+                minWidth: 44,
+                minHeight: 44,
+              ),
+            ),
+          
+          if (onInfoPressed != null)
+            IconButton(
+              icon: const Icon(
+                Icons.info_outline,
+                size: 20,
+                color: Colors.white,
+              ),
+              onPressed: onInfoPressed,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(
+                minWidth: 44,
+                minHeight: 44,
+              ),
+            ),
+          
+          if (onSharePressed != null)
+            IconButton(
+              icon: const Icon(
+                Icons.share_outlined,
+                size: 20,
+                color: Colors.white,
+              ),
+              onPressed: onSharePressed,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(
+                minWidth: 44,
+                minHeight: 44,
+              ),
+            ),
+          
+          if (onSavePressed != null)
+            IconButton(
+              icon: const Icon(
+                Icons.save_outlined,
+                size: 20,
+                color: Colors.white,
+              ),
+              onPressed: onSavePressed,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(
+                minWidth: 44,
+                minHeight: 44,
+              ),
+            ),
+          
+          if (onMenuPressed != null)
+            IconButton(
+              icon: const Icon(
+                Icons.more_vert,
+                size: 20,
+                color: Colors.white,
+              ),
+              onPressed: onMenuPressed,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(
+                minWidth: 44,
+                minHeight: 44,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

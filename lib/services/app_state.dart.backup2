@@ -1,0 +1,269 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import '../config/opera_studio_config.dart';
+import '../services/opera_studio_api_service.dart';
+import '../services/credit_service.dart';
+import '../services/processing_history_service.dart';
+import '../exceptions/custom_exceptions.dart';
+
+class AppState extends ChangeNotifier {
+  // Image state
+  File? _selectedImage;
+  File? _processedImage;
+  
+  // Processing states
+  bool _isProcessing = false;
+  bool _isAiEnhancing = false;
+  double _processingProgress = 0.0;
+  String _processingStatus = '';
+  
+  // User state
+  int _userCredits = 0;
+  Map<String, dynamic>? _userProfile;
+  
+  // Error state
+  String? _error;
+
+  // Image editing properties
+  String? _selectedFilter;
+  double _brightness = 0.0;
+  double _contrast = 0.0;
+  double _saturation = 0.0;
+  double _warmth = 0.0;
+
+  // Getters
+  File? get selectedImage => _selectedImage;
+  File? get processedImage => _processedImage;
+  bool get isProcessing => _isProcessing;
+  bool get isAiEnhancing => _isAiEnhancing;
+  double get processingProgress => _processingProgress;
+  String get processingStatus => _processingStatus;
+  int get userCredits => _userCredits;
+  Map<String, dynamic>? get userProfile => _userProfile;
+  String? get error => _error;
+  bool get isImageLoaded => _selectedImage != null;
+
+  // Image editing getters
+  String? get selectedFilter => _selectedFilter;
+  double get brightness => _brightness;
+  double get contrast => _contrast;
+  double get saturation => _saturation;
+  double get warmth => _warmth;
+  
+  // Computed properties
+  File? get displayImage => _processedImage ?? _selectedImage;
+  bool get hasAnyAdjustments => _brightness != 0.0 || _contrast != 0.0 || _saturation != 0.0 || _warmth != 0.0 || _selectedFilter != null;
+  String? get errorMessage => _error;
+
+  // Image management
+  void setSelectedImage(File image) {
+    _selectedImage = image;
+    _processedImage = null;
+    _error = null;
+    notifyListeners();
+  }
+
+  void resetImage() {
+    _selectedImage = null;
+    _processedImage = null;
+    _error = null;
+    notifyListeners();
+  }
+
+  void setProcessing(bool processing) {
+    _isProcessing = processing;
+    notifyListeners();
+  }
+
+  void setError(String? error) {
+    _error = error;
+    notifyListeners();
+  }
+
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+
+  void updateUserCredits(int credits) {
+    _userCredits = credits;
+    notifyListeners();
+  }
+
+  // Image editing methods
+  void setSelectedFilter(String? filter) {
+    _selectedFilter = filter;
+    notifyListeners();
+  }
+
+  void setBrightness(double brightness) {
+    _brightness = brightness;
+    notifyListeners();
+  }
+
+  void setContrast(double contrast) {
+    _contrast = contrast;
+    notifyListeners();
+  }
+
+  void setSaturation(double saturation) {
+    _saturation = saturation;
+    notifyListeners();
+  }
+
+  void setWarmth(double warmth) {
+    _warmth = warmth;
+    notifyListeners();
+  }
+
+  // Enhanced AI processing workflow
+  Future<void> enhanceImageWithAi() async {
+    if (_selectedImage == null) {
+      setError('No image selected for AI enhancement');
+      return;
+    }
+
+    try {
+      _isAiEnhancing = true;
+      _processingProgress = 0.0;
+      _processingStatus = 'Preparing image...';
+      notifyListeners();
+
+      // Step 1: Validate image and check credits
+      await _validateImageAndCredits();
+      _processingProgress = 0.1;
+      _processingStatus = 'Checking credits...';
+      notifyListeners();
+
+      // Step 2: Upload image and create prediction
+      _processingProgress = 0.2;
+      _processingStatus = 'Uploading image...';
+      notifyListeners();
+      
+      final predictionResult = await OperaStudioAPIService.enhanceGeneral(_selectedImage!);
+      final predictionId = predictionResult['id'];
+
+      // Step 3: Poll for completion with progress updates
+      _processingProgress = 0.3;
+      _processingStatus = 'Processing with AI...';
+      notifyListeners();
+
+      final completedResult = await _pollForResultWithProgress(predictionId);
+
+      // Step 4: Download and save result
+      _processingProgress = 0.8;
+      _processingStatus = 'Downloading result...';
+      notifyListeners();
+
+      await _processEnhancedResult(completedResult);
+
+      // Step 5: Update credits and history
+      _processingProgress = 0.95;
+      _processingStatus = 'Updating account...';
+      notifyListeners();
+
+      await _updateUserCreditsAndHistory();
+
+      _processingProgress = 1.0;
+      _processingStatus = 'Complete!';
+      
+      // Clear status after 2 seconds
+      Future.delayed(Duration(seconds: 2), () {
+        _processingStatus = '';
+        notifyListeners();
+      });
+
+    } catch (e) {
+      setError(_handleProcessingError(e));
+    } finally {
+      _isAiEnhancing = false;
+      _processingProgress = 0.0;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _validateImageAndCredits() async {
+    // Validate file size
+    final fileSize = await _selectedImage!.length();
+    if (fileSize > OperaStudioConfig.maxFileSizeBytes) {
+      throw Exception('Image too large. Maximum size is ${(OperaStudioConfig.maxFileSizeBytes / (1024 * 1024)).toInt()}MB');
+    }
+
+    // Check credits
+    final creditInfo = await CreditService.getUserCredits();
+    _userCredits = creditInfo['credits_remaining'];
+    
+    if (_userCredits < 1) {
+      throw InsufficientCreditsException('You need 1 credit to enhance this image. You have $_userCredits credits remaining.');
+    }
+  }
+
+  Future<Map<String, dynamic>> _pollForResultWithProgress(String predictionId) async {
+    for (int attempt = 0; attempt < 120; attempt++) {
+      final result = await OperaStudioAPIService.checkStatus(predictionId);
+      
+      if (result['status'] == 'succeeded') {
+        return result;
+      } else if (result['status'] == 'failed') {
+        throw ProcessingException('AI processing failed: ${result['error']}');
+      }
+      
+      // Update progress based on status
+      if (result['status'] == 'processing') {
+        _processingProgress = 0.3 + (attempt / 120.0) * 0.4; // 30% to 70%
+        notifyListeners();
+      }
+      
+      await Future.delayed(Duration(seconds: 1));
+    }
+    
+    throw TimeoutException('Processing took too long. Please try again.');
+  }
+
+  Future<void> _processEnhancedResult(Map<String, dynamic> result) async {
+    if (result['output'] == null || result['output'].isEmpty) {
+      throw ProcessingException('No enhanced image received');
+    }
+    
+    final imageUrl = result['output'][0];
+    final enhancedBytes = await OperaStudioAPIService.downloadImage(imageUrl);
+    
+    // Save to temporary file
+    final tempDir = await getTemporaryDirectory();
+    final tempFile = File('${tempDir.path}/enhanced_${DateTime.now().millisecondsSinceEpoch}.png');
+    await tempFile.writeAsBytes(enhancedBytes);
+    
+    _processedImage = tempFile;
+  }
+
+  Future<void> _updateUserCreditsAndHistory() async {
+    // Refresh user credits
+    final creditInfo = await CreditService.getUserCredits();
+    _userCredits = creditInfo['credits_remaining'];
+    
+    // Add to processing history
+    await ProcessingHistoryService.addProcessingRecord(
+      processingType: 'general_enhancement',
+      creditsConsumed: 1,
+      status: 'completed',
+      resultUrl: _processedImage?.path,
+    );
+  }
+
+  String _handleProcessingError(dynamic error) {
+    if (error is InsufficientCreditsException) {
+      return error.message;
+    } else if (error is ProcessingException) {
+      return error.message;
+    } else if (error is TimeoutException) {
+      return 'Processing timed out. Please check your connection and try again.';
+    } else if (error.toString().contains('401')) {
+      return 'Session expired. Please sign in again.';
+    } else if (error.toString().contains('429')) {
+      return 'Too many requests. Please wait a moment and try again.';
+    } else {
+      return 'Enhancement failed. Please try again.';
+    }
+  }
+}

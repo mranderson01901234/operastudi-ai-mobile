@@ -1,0 +1,276 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import '../services/app_state.dart';
+import '../widgets/upload_option_card.dart';
+import 'editing_screen.dart';
+import 'login_screen.dart';
+import 'api_test_screen.dart';
+
+class LandingScreen extends StatefulWidget {
+  const LandingScreen({super.key});
+
+  @override
+  State<LandingScreen> createState() => _LandingScreenState();
+}
+
+class _LandingScreenState extends State<LandingScreen> {
+  bool _isLoading = false;
+  final ImagePicker _picker = ImagePicker();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF1A1A1A),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header with Opera branding and account options
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Text(
+                    'OPERA',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2.0,
+                    ),
+                  ),
+                  Spacer(),
+                  // Credits display
+                  Consumer<AppState>(
+                    builder: (context, appState, child) {
+                      return Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF2A2A2A),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          'Credits: ${appState.userCredits}',
+                          style: TextStyle(
+                            color: Color(0xFF4A90E2),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  SizedBox(width: 8),
+                  // Account/Sign out button
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => LoginScreen()),
+                      );
+                    },
+                    child: Text(
+                      'Account',
+                      ),\                    ),\                  SizedBox(width: 8),\                  // Debug button\                  TextButton(\                    onPressed: () {\                      Navigator.push(\                        context,\                        MaterialPageRoute(builder: (context) => ApiTestScreen()),\                      );\                    },\                    child: Text(\                      'Debug',\                      style: TextStyle(\                        color: Color(0xFFFF6B6B),\                        fontSize: 14,\                      ),\                    ),\                  ),
+                      'Selfie Editor',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Enhance your photos with AI',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Color(0xFFB0B0B0),
+                      ),
+                    ),
+                    const SizedBox(height: 48),
+                    
+                    // Upload options
+                    UploadOptionCard(
+                      icon: Icons.camera_alt,
+                      title: 'Take Photo',
+                      subtitle: 'Capture a new photo',
+                      onTap: () => _takePhoto(context),
+                    ),
+                    const SizedBox(height: 16),
+                    UploadOptionCard(
+                      icon: Icons.photo_library,
+                      title: 'Choose from Gallery',
+                      subtitle: 'Select from your photos',
+                      onTap: () => _pickImage(context),
+                    ),
+                    const SizedBox(height: 16),
+                    UploadOptionCard(
+                      icon: Icons.upload_file,
+                      title: 'Upload File',
+                      subtitle: 'Select any image file',
+                      onTap: () => _uploadFile(context),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Add test credits button
+                    Consumer<AppState>(
+                      builder: (context, appState, child) {
+                        return SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              appState.addTestCredits(5);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Added 5 test credits!'),
+                                  backgroundColor: Color(0xFF4A90E2),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                            icon: Icon(Icons.add, color: Color(0xFF4A90E2)),
+                            label: Text(
+                              'Add 5 Test Credits',
+                              style: TextStyle(color: Color(0xFF4A90E2)),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: Color(0xFF4A90E2)),
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _takePhoto(BuildContext context) async {
+    if (_isLoading) return;
+    
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        final File imageFile = File(image.path);
+        final appState = context.read<AppState>();
+        appState.setSelectedImage(imageFile);
+        
+        // Navigate to editing screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => EditingScreen()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to take photo: $e'),
+          backgroundColor: Color(0xFFE74C3C),
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _pickImage(BuildContext context) async {
+    if (_isLoading) return;
+    
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        final File imageFile = File(image.path);
+        final appState = context.read<AppState>();
+        appState.setSelectedImage(imageFile);
+        
+        // Navigate to editing screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => EditingScreen()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to pick image: $e'),
+          backgroundColor: Color(0xFFE74C3C),
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _uploadFile(BuildContext context) async {
+    if (_isLoading) return;
+    
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // For now, use gallery picker as file picker
+      // In a full implementation, you'd use file_picker package
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        final File imageFile = File(image.path);
+        final appState = context.read<AppState>();
+        appState.setSelectedImage(imageFile);
+        
+        // Navigate to editing screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => EditingScreen()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to upload file: $e'),
+          backgroundColor: Color(0xFFE74C3C),
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+}

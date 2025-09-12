@@ -1,0 +1,131 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+
+class ReplicateService {
+  // TODO: Replace with your actual Replicate API token
+  static const String _apiToken = 'YOUR_REPLICATE_API_TOKEN';
+  static const String _baseUrl = 'https://api.replicate.com/v1';
+  
+  // AI enhancement model - you can change this to any Replicate model
+  static const String _modelId = 'tencentarc/photomaker:ddfc2b08d209f9fa8c1eca692712918bd449f695dabb4a958da31802a9570fe4';
+  
+  /// Enhance image using Replicate API
+  static Future<String?> enhanceImage(File imageFile) async {
+    try {
+      // Step 1: Upload image to Replicate
+      final imageUrl = await _uploadImage(imageFile);
+      if (imageUrl == null) {
+        throw Exception('Failed to upload image');
+      }
+      
+      // Step 2: Create prediction
+      final predictionId = await _createPrediction(imageUrl);
+      if (predictionId == null) {
+        throw Exception('Failed to create prediction');
+      }
+      
+      // Step 3: Wait for completion and get result
+      final resultUrl = await _waitForCompletion(predictionId);
+      return resultUrl;
+      
+    } catch (e) {
+      throw Exception('AI enhancement failed: $e');
+    }
+  }
+  
+  /// Upload image to Replicate
+  static Future<String?> _uploadImage(File imageFile) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_baseUrl/files'),
+      );
+      
+      request.headers['Authorization'] = 'Token $_apiToken';
+      request.files.add(
+        await http.MultipartFile.fromPath('file', imageFile.path),
+      );
+      
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+      
+      if (response.statusCode == 201) {
+        final data = json.decode(responseBody);
+        return data['urls']['get'];
+      } else {
+        throw Exception('Upload failed: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Image upload error: $e');
+    }
+  }
+  
+  /// Create prediction with Replicate
+  static Future<String?> _createPrediction(String imageUrl) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/predictions'),
+        headers: {
+          'Authorization': 'Token $_apiToken',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'version': _modelId.split(':').last,
+          'input': {
+            'image': imageUrl,
+            'prompt': 'enhance this selfie, improve skin texture, lighting, and overall quality',
+            'negative_prompt': 'blurry, low quality, distorted',
+            'num_inference_steps': 20,
+            'guidance_scale': 7.5,
+          },
+        }),
+      );
+      
+      if (response.statusCode == 201) {
+        final data = json.decode(response.body);
+        return data['id'];
+      } else {
+        throw Exception('Prediction creation failed: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Prediction creation error: $e');
+    }
+  }
+  
+  /// Wait for prediction completion
+  static Future<String?> _waitForCompletion(String predictionId) async {
+    try {
+      while (true) {
+        final response = await http.get(
+          Uri.parse('$_baseUrl/predictions/$predictionId'),
+          headers: {
+            'Authorization': 'Token $_apiToken',
+          },
+        );
+        
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          final status = data['status'];
+          
+          if (status == 'succeeded') {
+            final output = data['output'];
+            if (output is List && output.isNotEmpty) {
+              return output.first;
+            }
+            return null;
+          } else if (status == 'failed') {
+            throw Exception('Prediction failed: ${data['error']}');
+          }
+          
+          // Wait 2 seconds before checking again
+          await Future.delayed(const Duration(seconds: 2));
+        } else {
+          throw Exception('Status check failed: ${response.statusCode}');
+        }
+      }
+    } catch (e) {
+      throw Exception('Completion wait error: $e');
+    }
+  }
+}

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="AI-powered selfie editing app for social media creators">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Selfie Editor">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Selfie Editor</title>
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Preload fonts to prevent loading errors -->
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" as="style">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+  
+  <!-- CSS fixes for web rendering -->
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #1A1A1A;
+      overflow: hidden;
+    }
+    
+    /* Fix for Flutter web CSS parsing issues */
+    * {
+      box-sizing: border-box;
+    }
+    
+    /* Prevent CSS parsing errors */
+    .flutter-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+    
+    /* Fix for font loading issues */
+    @font-face {
+      font-family: 'CupertinoIcons';
+      src: url('packages/cupertino_icons/CupertinoIcons.ttf') format('truetype');
+      font-display: swap;
+    }
+  </style>
+</head>
+<body>
+  <div class="flutter-container">
+    <script src="flutter_bootstrap.js" async></script>
+  </div>
+</body>
+</html>
