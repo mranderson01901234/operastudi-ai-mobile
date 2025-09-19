@@ -307,10 +307,16 @@ class CameraService {
     try {
       print('🎨 CameraService: Creating sample image for testing');
       
-      // Create a simple colored rectangle as sample image
-      final bytes = await rootBundle.load('assets/images/sample_selfie.jpg');
+      // Create a simple programmatic sample image (no assets needed)
+      final image = img.Image(width: 400, height: 500);
+      img.fill(image, color: img.ColorRgb8(100, 150, 200)); // Light blue background
+      
+      // Add some simple shapes for testing
+      img.fillRect(image, x1: 100, y1: 150, x2: 300, y2: 350, color: img.ColorRgb8(200, 100, 100));
+      
+      final bytes = img.encodeJpg(image);
       final file = File('${Directory.systemTemp.path}/sample_selfie_${DateTime.now().millisecondsSinceEpoch}.jpg');
-      await file.writeAsBytes(bytes.buffer.asUint8List());
+      await file.writeAsBytes(bytes);
       
       print('✅ CameraService: Sample image created: ${file.path}');
       return file;

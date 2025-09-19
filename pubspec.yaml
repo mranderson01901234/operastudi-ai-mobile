@@ -54,9 +54,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  assets:
-    - assets/
-
 # Development scripts
 scripts:
   # Run in development mode
