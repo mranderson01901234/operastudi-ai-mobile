@@ -53,22 +53,22 @@ TOTAL_MEM=$(free -m | awk 'NR==2{printf "%.0f", $2}')
 AVAILABLE_MEM=$(free -m | awk 'NR==2{printf "%.0f", $7}')
 print_status "Total Memory: ${TOTAL_MEM}MB, Available: ${AVAILABLE_MEM}MB"
 
-if [ "$AVAILABLE_MEM" -lt 2048 ]; then
-    print_warning "Low memory detected (${AVAILABLE_MEM}MB available). Creating temporary swap..."
+if [ "$AVAILABLE_MEM" -lt 1024 ]; then
+    print_warning "Low memory detected (${AVAILABLE_MEM}MB available). Optimizing..."
     if [ ! -f /swapfile_flutter ]; then
-        print_status "Creating 4GB swap file..."
-        fallocate -l 4G /swapfile_flutter
+        print_status "Creating 2GB swap file (optimized size)..."
+        fallocate -l 2G /swapfile_flutter
         chmod 600 /swapfile_flutter
-        mkswap /swapfile_flutter
+        mkswap /swapfile_flutter > /dev/null 2>&1
         swapon /swapfile_flutter
-        print_status "✅ Temporary 4GB swap created"
+        print_status "✅ Temporary 2GB swap created"
     else
         swapon /swapfile_flutter 2>/dev/null || true
         print_status "✅ Existing swap activated"
     fi
     
-    # Memory optimizations
-    echo 3 > /proc/sys/vm/drop_caches
+    # Quick memory optimization
+    echo 1 > /proc/sys/vm/drop_caches  # Reduced from 3 to 1 for speed
     echo 10 > /proc/sys/vm/swappiness
     print_status "✅ System memory optimized"
 fi
@@ -199,35 +199,53 @@ else
     fi
 fi
 
-# Step 7: Install Node.js dependencies
+# Step 7: Install Node.js dependencies (skip if package.json unchanged)
 print_status "📦 Installing Node.js dependencies..."
-npm install --production --no-optional
-print_status "✅ Node.js dependencies installed"
+if [ ! -f "node_modules/.package-lock-hash" ] || [ "$(md5sum package-lock.json | cut -d' ' -f1)" != "$(cat node_modules/.package-lock-hash 2>/dev/null)" ]; then
+    npm ci --production --no-optional --silent
+    md5sum package-lock.json | cut -d' ' -f1 > node_modules/.package-lock-hash
+    print_status "✅ Node.js dependencies installed"
+else
+    print_status "✅ Node.js dependencies up to date (skipped)"
+fi
 
 # Step 8: Build Flutter web app
 print_status "🏗️ Building Flutter web application..."
 
-# Clean previous build
-rm -rf build/web 2>/dev/null || true
-
-# Install Flutter dependencies
-flutter pub get
-print_status "✅ Flutter dependencies installed"
-
-# Build with memory optimizations
-export FLUTTER_BUILD_MODE=release
-export FLUTTER_WEB_USE_SKIA=false
-export DART_VM_OPTIONS="--old_gen_heap_size=512 --new_gen_semi_max_size=128"
-
-print_status "Building Flutter web app (this may take several minutes)..."
-flutter build web \
-    --release \
-    --base-href="/mobile/" \
-    --tree-shake-icons \
-    --dart-define=flutter.web.canvaskit.url=https://unpkg.com/canvaskit-wasm@latest/bin/ \
-    --dart-define=flutter.web.use_skia=false
-
-print_success "✅ Flutter build completed"
+# Skip build if no Dart/Flutter files changed (optimization)
+FLUTTER_HASH_FILE=".flutter-build-hash"
+CURRENT_HASH=$(find lib -name "*.dart" -exec md5sum {} \; | md5sum | cut -d' ' -f1)
+if [ -f "$FLUTTER_HASH_FILE" ] && [ "$(cat $FLUTTER_HASH_FILE)" = "$CURRENT_HASH" ] && [ -d "build/web" ]; then
+    print_status "✅ Flutter build up to date (skipped - saves 60+ seconds)"
+else
+    # Clean previous build
+    rm -rf build/web .dart_tool/build 2>/dev/null || true
+    
+    # Install Flutter dependencies (only if needed)
+    if [ ! -f ".dart_tool/package_config.json" ]; then
+        flutter pub get --offline 2>/dev/null || flutter pub get
+    fi
+    print_status "✅ Flutter dependencies ready"
+    
+    # OPTIMIZED BUILD: Faster settings for production
+    export FLUTTER_BUILD_MODE=release
+    export FLUTTER_WEB_USE_SKIA=false
+    export DART_VM_OPTIONS="--old_gen_heap_size=1024 --new_gen_semi_max_size=256"
+    
+    print_status "Building Flutter web app (optimized for speed)..."
+    flutter build web \
+        --release \
+        --base-href="/mobile/" \
+        --tree-shake-icons \
+        --no-source-maps \
+        --pwa-strategy=none \
+        --dart-define=flutter.web.use_skia=false \
+        --dart-define=flutter.web.canvaskit.url=https://unpkg.com/canvaskit-wasm@0.38.0/bin/
+    
+    # Cache the build hash
+    echo "$CURRENT_HASH" > "$FLUTTER_HASH_FILE"
+    print_success "✅ Flutter build completed"
+fi
 
 # Step 9: Deploy web files
 print_status "📁 Deploying web files..."
