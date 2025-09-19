@@ -298,15 +298,50 @@ class WebAPIService {
     try {
       print('🔍 Checking status for prediction: $predictionId');
 
+      // CRITICAL FIX: Add authentication headers to status check
+      var session = _supabase.auth.currentSession;
+      
+      // Check if session is expired and refresh if needed
+      if (session != null && session.expiresAt != null) {
+        final expiresAt = DateTime.fromMillisecondsSinceEpoch(session.expiresAt! * 1000);
+        final now = DateTime.now();
+        
+        if (expiresAt.isBefore(now.add(const Duration(minutes: 5)))) {
+          print('🔄 Status check: Session expires soon, refreshing...');
+          try {
+            final refreshResult = await _supabase.auth.refreshSession();
+            if (refreshResult.session != null) {
+              session = refreshResult.session!;
+              print('✅ Status check: Session refreshed successfully');
+            }
+          } catch (e) {
+            print('❌ Status check: Session refresh failed: $e');
+            throw Exception('Session expired. Please sign in again.');
+          }
+        }
+      }
+      
+      Map<String, String> headers = {
+        'Content-Type': 'application/json',
+      };
+
+      if (session != null) {
+        headers['Authorization'] = 'Bearer ${session.accessToken}';
+        print('🔐 Status check: Using authenticated session');
+      } else {
+        print('❌ Status check: No authentication session');
+        throw Exception('User must be authenticated to check status');
+      }
+
       final response = await http.get(
         Uri.parse('$baseUrl$replicateStatusEndpoint/$predictionId'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return json.decode(response.body);
+        final result = json.decode(response.body);
+        print('✅ Status check result: ${result['status']}');
+        return result;
       } else {
         throw Exception('Status check failed: ${response.statusCode} - ${response.body}');
       }

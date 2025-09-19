@@ -272,7 +272,7 @@ class ComprehensiveWebFunctionTester {
     try {
       // Test 4: AI enhancement workflow
       await _log('Testing: AppState.enhanceImageWithAi()');
-      await appState.enhanceImageWithAi();
+      await appState.enhanceImageWithAi('General'); // Add required modelName parameter
       await _log('✅ AI enhancement workflow completed');
     } catch (e) {
       await _log('❌ AI enhancement exception: $e');
