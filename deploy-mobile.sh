@@ -147,9 +147,6 @@ if [[ $EUID -eq 0 ]]; then
         --release \
         --base-href="/mobile/" \
         --tree-shake-icons \
-        --no-source-maps \
-        --split-debug-info=debug_symbols \
-        --obfuscate \
         --dart-define=flutter.web.canvaskit.url=https://unpkg.com/canvaskit-wasm@latest/bin/ \
         --dart-define=flutter.web.use_skia=false
 else
@@ -157,16 +154,11 @@ else
         --release \
         --base-href="/mobile/" \
         --tree-shake-icons \
-        --no-source-maps \
-        --split-debug-info=debug_symbols \
-        --obfuscate \
         --dart-define=flutter.web.canvaskit.url=https://unpkg.com/canvaskit-wasm@latest/bin/ \
         --dart-define=flutter.web.use_skia=false
 fi
 
-# Clean up debug symbols to save space
-rm -rf debug_symbols 2>/dev/null || true
-print_status "✅ Build completed and debug symbols cleaned up"
+print_status "✅ Build completed with memory optimizations"
 
 # Step 6: Create mobile directory if it doesn't exist
 print_status "Setting up mobile directory..."
