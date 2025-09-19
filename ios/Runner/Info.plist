@@ -43,6 +43,15 @@
 	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- CRITICAL: Add missing photo library permission -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to your photos to enhance images including iPhone HEIC photos.</string>
+	<!-- CRITICAL: Add missing camera permission -->
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to capture photos for enhancement including HEIC format images.</string>
+	<!-- Update existing permission with HEIC mention -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>This app needs access to save enhanced images including HEIC photos to your photo library.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 </dict>

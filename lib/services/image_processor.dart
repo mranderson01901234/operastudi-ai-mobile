@@ -1,6 +1,5 @@
+import '../config/app_logger.dart';
 import 'dart:io';
-import 'dart:typed_data';
-import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
@@ -25,7 +24,7 @@ class ImageProcessor {
       final stopwatch = Stopwatch()..start();
       
       // Generate cache key
-      final cacheKey = '${originalImage.path}_${brightness}_${contrast}_${saturation}_${warmth}_${filter}_${isPreview}';
+      final cacheKey = '${originalImage.path}_${brightness}_${contrast}_${saturation}_${warmth}_${filter}_$isPreview';
       
       // Check cache
       if (_imageCache.containsKey(cacheKey)) {
@@ -73,7 +72,7 @@ class ImageProcessor {
       
       return processedFile;
     } catch (e) {
-      print('❌ ImageProcessor: Processing error: $e');
+      AppLogger.error('ImageProcessor: Processing error', e);
       return null;
     }
   }
@@ -144,7 +143,7 @@ class ImageProcessor {
       _cacheTimestamps.clear();
       _processingTimes.clear();
     } catch (e) {
-      print('❌ Error clearing image cache: $e');
+      AppLogger.error('Error clearing image cache', e);
     }
   }
 

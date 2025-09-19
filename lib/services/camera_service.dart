@@ -1,11 +1,31 @@
 import 'dart:io';
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'file_validator.dart';
+
+/// Web-compatible File wrapper that stores bytes in memory
+class WebFile {
+  final Uint8List _bytes;
+  final String _name;
+  
+  WebFile(this._bytes, this._name);
+  
+  Future<Uint8List> readAsBytes() async => _bytes;
+  
+  String get path => 'web_file_$_name';
+  
+  int lengthSync() => _bytes.length;
+  
+  Future<int> length() async => _bytes.length;
+  
+  bool existsSync() => true;
+  
+  Future<bool> exists() async => true;
+}
 
 class CameraService {
   static final ImagePicker _picker = ImagePicker();
@@ -182,8 +202,8 @@ class CameraService {
     }
   }
   
-  /// Pick image from gallery with enhanced error handling
-  static Future<File?> pickFromGallery() async {
+  /// Pick image from gallery with enhanced error handling and file validation
+  static Future<dynamic> pickFromGallery() async {
     try {
       print('📸 CameraService: pickFromGallery called');
       print('📸 CameraService: Platform - kIsWeb: $kIsWeb');
@@ -220,6 +240,23 @@ class CameraService {
       print('✅ CameraService: Mobile file created');
       print('�� CameraService: File exists: $exists, size: $fileSize bytes');
       
+      
+      // CRITICAL: Add file validation
+      final validationResult = FileValidator.validateFile(file);
+      if (!validationResult.isValid) {
+        print('❌ CameraService: File validation failed: ${validationResult.errorMessage}');
+        throw Exception(validationResult.errorMessage!);
+      }
+      
+      // Log HEIC files for monitoring
+      if (validationResult.isHEIC) {
+        print('📱 CameraService: HEIC file selected: ${FileValidator.formatFileSize(validationResult.fileSize)}');
+        print('📱 CameraService: File type: ${validationResult.fileType}');
+      }
+      
+      // Log file validation info
+      FileValidator.logFileInfo(file);
+      
       return file;
       
     } catch (e) {
@@ -248,13 +285,12 @@ class CameraService {
   }
   
   /// Create a web-compatible File object
-  static File _createWebFile(Uint8List bytes, String name) {
+  static WebFile _createWebFile(Uint8List bytes, String name) {
     print('🌐 CameraService: _createWebFile called with ${bytes.length} bytes');
-    // For web, we'll create a File with a data URL
-    final base64 = base64Encode(bytes);
-    final dataUrl = 'data:image/jpeg;base64,$base64';
-    print('✅ CameraService: Data URL created, length: ${dataUrl.length}');
-    return File(dataUrl);
+    // For web, create a WebFile that can properly handle readAsBytes()
+    final webFile = WebFile(bytes, name);
+    print('✅ CameraService: WebFile created with ${bytes.length} bytes');
+    return webFile;
   }
   
   /// Get camera info for debugging

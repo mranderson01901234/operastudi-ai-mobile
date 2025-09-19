@@ -23,10 +23,19 @@ migrate_working_dir/
 
 # Flutter/Dart/Pub related
 **/doc/api/
-**/ios/Flutter/.last_build_id
+**/ios/Flutter/flutter_assets/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/ios/Runner/Runner-Bridging-Header.h
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GoogleService-Info.plist
+**/android/app/google-services.json
+**/android/gradle.properties
+**/android/key.properties
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
+.packages
 .pub-cache/
 .pub/
 /build/
@@ -41,3 +50,21 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Environment files and sensitive data
+.env
+.env.backup
+.env.example
+*.env
+**/lib/services/update_replicate_token.dart
+
+# API keys and secrets
+**/secrets/
+**/keys/
+**/*_key.dart
+**/*_token.dart
+**/*_secret.dart
+
+# Test files with sensitive data
+test_*api*.dart
+test_*token*.dart

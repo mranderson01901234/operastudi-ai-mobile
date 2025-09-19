@@ -24,10 +24,10 @@ class EditingBottomSheet extends StatelessWidget {
           minHeight: 250,
         ),
         child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1A1A), // Removed opacity - fully opaque
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            border: const Border(
+          decoration: const BoxDecoration(
+            color: Color(0xFF1A1A1A), // Removed opacity - fully opaque
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            border: Border(
               top: BorderSide(
                 color: Color(0xFF3A3A3A),
                 width: 0.5,

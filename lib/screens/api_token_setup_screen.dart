@@ -14,7 +14,7 @@ class ApiTokenSetupScreen extends StatefulWidget {
 class _ApiTokenSetupScreenState extends State<ApiTokenSetupScreen> {
   final _tokenController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
+  final bool _isLoading = false;
   bool _isValidating = false;
   String? _errorMessage;
   String? _successMessage;

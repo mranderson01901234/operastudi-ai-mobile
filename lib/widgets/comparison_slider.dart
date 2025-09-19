@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../services/app_state.dart';
 
 class ComparisonSlider extends StatelessWidget {
-  const ComparisonSlider({Key? key}) : super(key: key);
+  const ComparisonSlider({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -63,13 +63,30 @@ class ComparisonSlider extends StatelessWidget {
                       ),
                     ),
                     Expanded(
-                      child: Slider(
-                        value: appState.comparisonSliderValue,
-                        onChanged: appState.updateComparisonSlider,
-                        activeColor: const Color(0xFF4A90E2),
-                        inactiveColor: const Color(0xFF404040),
-                        min: 0.0,
-                        max: 1.0,
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          trackHeight: 4.0,
+                          thumbShape: const RoundSliderThumbShape(
+                            enabledThumbRadius: 10.0,
+                            pressedElevation: 8.0,
+                          ),
+                          overlayShape: const RoundSliderOverlayShape(
+                            overlayRadius: 20.0,
+                          ),
+                          activeTrackColor: const Color(0xFF4A90E2),
+                          inactiveTrackColor: const Color(0xFF404040),
+                          thumbColor: const Color(0xFF4A90E2),
+                          overlayColor: const Color(0xFF4A90E2).withOpacity(0.2),
+                          // Ensure proper handle centering
+                          trackShape: const RoundedRectSliderTrackShape(),
+                          tickMarkShape: const RoundSliderTickMarkShape(),
+                        ),
+                        child: Slider(
+                          value: appState.comparisonSliderValue,
+                          onChanged: appState.updateComparisonSlider,
+                          min: 0.0,
+                          max: 1.0,
+                        ),
                       ),
                     ),
                     const Text(

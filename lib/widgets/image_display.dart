@@ -82,7 +82,7 @@ class ImageDisplay extends StatelessWidget {
                   color: Colors.black.withOpacity(0.7),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Row(
+                child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SizedBox(
@@ -93,8 +93,8 @@ class ImageDisplay extends StatelessWidget {
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    const Text(
+                    SizedBox(width: 8),
+                    Text(
                       'Processing...',
                       style: TextStyle(
                         color: Colors.white,
@@ -125,16 +125,16 @@ class ImageDisplay extends StatelessWidget {
                   color: Colors.blue.withOpacity(0.8),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Row(
+                child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.tune,
                       color: Colors.white,
                       size: 14,
                     ),
-                    const SizedBox(width: 4),
-                    const Text(
+                    SizedBox(width: 4),
+                    Text(
                       'Edited',
                       style: TextStyle(
                         color: Colors.white,

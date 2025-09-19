@@ -328,27 +328,27 @@ class ErrorHandler {
       barrierDismissible: barrierDismissible,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: Color(0xFF181A1B),
+          backgroundColor: const Color(0xFF181A1B),
           title: Row(
             children: [
-              Icon(Icons.error_outline, color: Color(0xFF4A90E2), size: 24),
-              SizedBox(width: 8),
+              const Icon(Icons.error_outline, color: Color(0xFF4A90E2), size: 24),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(color: Colors.white, fontSize: 18),
+                  style: const TextStyle(color: Colors.white, fontSize: 18),
                 ),
               ),
             ],
           ),
           content: Text(
             message,
-            style: TextStyle(color: Colors.white70, fontSize: 14),
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
           actions: actions ?? [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text(
+              child: const Text(
                 'OK',
                 style: TextStyle(color: Color(0xFF4A90E2)),
               ),
@@ -378,21 +378,21 @@ class ErrorHandler {
       SnackBar(
         content: Row(
           children: [
-            Icon(Icons.error_outline, color: Colors.white, size: 20),
-            SizedBox(width: 8),
+            const Icon(Icons.error_outline, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 message,
-                style: TextStyle(color: Colors.white),
+                style: const TextStyle(color: Colors.white),
               ),
             ),
           ],
         ),
-        backgroundColor: Color(0xFF4A90E2),
+        backgroundColor: const Color(0xFF4A90E2),
         duration: duration,
         action: action,
         behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(16),
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
@@ -414,11 +414,11 @@ class ErrorHandler {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Use Gallery', style: TextStyle(color: Color(0xFF4A90E2))),
+            child: const Text('Use Gallery', style: TextStyle(color: Color(0xFF4A90E2))),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('OK', style: TextStyle(color: Colors.grey)),
+            child: const Text('OK', style: TextStyle(color: Colors.grey)),
           ),
         ],
       );

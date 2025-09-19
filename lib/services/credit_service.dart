@@ -1,3 +1,4 @@
+import '../config/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CreditService {
@@ -51,5 +52,40 @@ class CreditService {
       'user_id': user.id,
       'credits_consumed': credits,
     });
+  }
+
+  // Add missing deductCredits method
+  Future<bool> deductCredits(int amount) async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return false;
+      
+      // Get current credits
+      final response = await Supabase.instance.client
+          .from('users')
+          .select('credits_remaining')
+          .eq('id', user.id)
+          .single();
+      
+      int currentCredits = response['credits_remaining'] ?? 0;
+      
+      if (currentCredits < amount) {
+        return false; // Insufficient credits
+      }
+      
+      // Deduct credits
+      await Supabase.instance.client
+          .from('users')
+          .update({
+            'credits_remaining': currentCredits - amount,
+            'total_credits_used': currentCredits - amount, // Simple increment
+          })
+          .eq('id', user.id);
+      
+      return true;
+    } catch (e) {
+      AppLogger.error('Credit deduction error', e);
+      return false;
+    }
   }
 }

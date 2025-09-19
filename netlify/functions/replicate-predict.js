@@ -1,0 +1,165 @@
+const { createClient } = require('@supabase/supabase-js');
+
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
+
+exports.handler = async (event, context) => {
+  // Handle CORS
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  };
+
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: '',
+    };
+  }
+
+  try {
+    console.log('🚀 Replicate Predict: Starting request');
+    console.log('Request method:', event.httpMethod);
+    console.log('Request headers:', JSON.stringify(event.headers, null, 2));
+
+    // Parse request body
+    const requestBody = JSON.parse(event.body || '{}');
+    console.log('Request body keys:', Object.keys(requestBody));
+
+    // Validate authentication
+    const authHeader = event.headers.authorization || event.headers.Authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ Replicate Predict: No valid authorization header');
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({
+          error: 'Authentication required',
+          message: 'Please provide a valid Bearer token'
+        }),
+      };
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    console.log('�� Replicate Predict: Token received (first 20 chars):', token.substring(0, 20) + '...');
+
+    // Verify Supabase session
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      console.log('❌ Replicate Predict: Authentication failed:', authError?.message);
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({
+          error: 'Invalid token',
+          message: 'Authentication failed'
+        }),
+      };
+    }
+
+    console.log('✅ Replicate Predict: User authenticated:', user.email);
+
+    // Validate request body
+    if (!requestBody.input || !requestBody.input.image) {
+      console.log('❌ Replicate Predict: Missing image in request');
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({
+          error: 'Missing image',
+          message: 'Request must include input.image'
+        }),
+      };
+    }
+
+    // Extract image data
+    const imageData = requestBody.input.image;
+    const scale = requestBody.input.scale || '2x';
+    const sharpen = requestBody.input.sharpen || 37;
+    const denoise = requestBody.input.denoise || 25;
+    const faceRecovery = requestBody.input.faceRecovery || false;
+
+    console.log('📸 Replicate Predict: Processing image', {
+      hasImage: !!imageData,
+      scale: scale,
+      sharpen: sharpen,
+      denoise: denoise,
+      faceRecovery: faceRecovery,
+      imageSize: imageData.length
+    });
+
+    // Call Replicate API
+    const replicateResponse = await fetch('https://api.replicate.com/v1/predictions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        version: process.env.REPLICATE_MODEL_ID || 'mranderson01901234/my-app-scunetrepliactemodel',
+        input: {
+          image: imageData,
+          scale: scale,
+          sharpen: parseInt(sharpen),
+          denoise: parseInt(denoise),
+          face_recovery: faceRecovery
+        }
+      })
+    });
+
+    if (!replicateResponse.ok) {
+      const errorText = await replicateResponse.text();
+      console.log('❌ Replicate Predict: Replicate API error:', errorText);
+      return {
+        statusCode: replicateResponse.status,
+        headers,
+        body: JSON.stringify({
+          error: 'Replicate API error',
+          message: errorText
+        }),
+      };
+    }
+
+    const replicateData = await replicateResponse.json();
+    console.log('✅ Replicate Predict: Prediction created', {
+      id: replicateData.id,
+      status: replicateData.status
+    });
+
+    // Return the response in the format expected by the mobile app
+    return {
+      statusCode: 201,
+      headers,
+      body: JSON.stringify({
+        id: replicateData.id,
+        model: replicateData.model,
+        version: replicateData.version,
+        deployment: replicateData.deployment,
+        input: replicateData.input,
+        logs: replicateData.logs,
+        output: replicateData.output,
+        data_removed: replicateData.data_removed,
+        error: replicateData.error,
+        status: replicateData.status,
+        created_at: replicateData.created_at,
+        urls: replicateData.urls
+      }),
+    };
+
+  } catch (error) {
+    console.error('❌ Replicate Predict: Unexpected error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        error: 'Internal server error',
+        message: error.message
+      }),
+    };
+  }
+};

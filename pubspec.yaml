@@ -31,9 +31,20 @@ dependencies:
   permission_handler: ^11.3.1
   image: ^4.1.7
   path: ^1.8.3
+  share_plus: ^7.2.2
+  url_launcher: ^6.2.5
   
   # UI components
   cupertino_icons: ^1.0.2
+
+  # Logging
+  logger: ^2.0.2
+
+  # Environment variables
+  flutter_dotenv: ^6.0.0
+
+  webview_flutter: ^4.0.7
+  webview_flutter_android: ^3.16.9
 
 dev_dependencies:
   flutter_test:
@@ -42,3 +53,31 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - .env
+
+# Development scripts
+scripts:
+  # Run in development mode
+  dev: flutter run --dart-define=ENVIRONMENT=dev
+  
+  # Run in staging mode  
+  staging: flutter run --dart-define=ENVIRONMENT=staging
+  
+  # Run in production mode
+  prod: flutter run --dart-define=ENVIRONMENT=prod --release
+  
+  # Build for different environments
+  build-dev: flutter build apk --debug --dart-define=ENVIRONMENT=dev
+  build-staging: flutter build apk --debug --dart-define=ENVIRONMENT=staging
+  build-prod: flutter build apk --release --dart-define=ENVIRONMENT=prod
+  
+  # Run tests
+  test: flutter test
+  
+  # Analyze code
+  analyze: dart analyze lib/
+  
+  # Clean and get dependencies
+  clean: flutter clean && flutter pub get

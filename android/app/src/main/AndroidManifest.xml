@@ -21,10 +21,12 @@
         android:required="false" />
 
     <application
-        android:label="selfie_editor"
-        android:name="${applicationName}"
+        android:label="Opera Studio AI"
+        android:name=".MainApplication"
         android:icon="@mipmap/ic_launcher"
-        android:requestLegacyExternalStorage="true">
+        android:requestLegacyExternalStorage="true"
+        android:usesCleartextTraffic="true"
+        android:enableOnBackInvokedCallback="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import '../config/opera_studio_config.dart';
-import '../services/opera_studio_api_service.dart';
 import '../services/web_api_service.dart';
-import '../services/credit_service.dart';
 import '../services/processing_history_service.dart';
 import '../exceptions/custom_exceptions.dart';
+import 'cloud_storage_service.dart';
+import 'auth_service.dart';
+import 'gallery_service.dart';
+import '../services/replicate_service.dart'; // Added import for ReplicateService
 
 class AppState extends ChangeNotifier {
   // Image state
@@ -33,9 +36,64 @@ class AppState extends ChangeNotifier {
   double _saturation = 0.0;
   double _warmth = 0.0;
 
-  // Constructor - give test credits for development
+  // Comparison functionality
+  bool _isComparisonMode = false;
+  double _comparisonSliderValue = 0.5;
+
+  // Save functionality
+  bool _isSaving = false;
+  int _savedImagesCount = 0;
+
+  // Constructor - initialize user data
   AppState() {
-    _userCredits = 10; // Give 10 test credits for development
+    _initializeUserData();
+  }
+
+  // ✅ ENHANCED: Initialize user data from authentication
+  Future<void> _initializeUserData() async {
+    try {
+      final userProfile = await AuthService.getUserProfile();
+      if (userProfile != null) {
+        _userProfile = userProfile;
+        _userCredits = userProfile['credits_remaining'] ?? 10;
+      } else {
+        // Fallback for development
+        _userCredits = 10;
+      }
+      
+      // Load saved images count
+      await _loadSavedImagesCount();
+    } catch (e) {
+      // Fallback for development
+      _userCredits = 10;
+    }
+    notifyListeners();
+  }
+
+  // ✅ NEW: Load saved images count
+  Future<void> _loadSavedImagesCount() async {
+    try {
+      final user = AuthService.getCurrentUser();
+      if (user != null) {
+        final imageHistory = await CloudStorageService.getUserImageHistory(user.id);
+        _savedImagesCount = imageHistory.length;
+      }
+    } catch (e) {
+      print('❌ Error loading saved images count: $e');
+      _savedImagesCount = 0;
+    }
+  }
+
+  // ✅ NEW: Refresh saved images count (call after saving)
+  Future<void> refreshSavedImagesCount() async {
+    await _loadSavedImagesCount();
+    notifyListeners();
+  }
+
+  // ✅ NEW: Refresh user data when authentication changes
+  Future<void> refreshUserData() async {
+    print('🔄 AppState: Refreshing user data after auth change');
+    await _initializeUserData();
   }
 
   // Getters
@@ -49,6 +107,9 @@ class AppState extends ChangeNotifier {
   Map<String, dynamic>? get userProfile => _userProfile;
   String? get error => _error;
   bool get isImageLoaded => _selectedImage != null;
+  bool get isSaving => _isSaving;
+  bool get hasEnhancedImage => _processedImage != null;
+  int get savedImagesCount => _savedImagesCount;
 
   // Image editing getters
   String? get selectedFilter => _selectedFilter;
@@ -56,6 +117,11 @@ class AppState extends ChangeNotifier {
   double get contrast => _contrast;
   double get saturation => _saturation;
   double get warmth => _warmth;
+
+  // Comparison getters
+  bool get canCompareImages => _selectedImage != null && _processedImage != null;
+  bool get isComparisonMode => _isComparisonMode;
+  double get comparisonSliderValue => _comparisonSliderValue;
   
   // Computed properties
   File? get displayImage => _processedImage ?? _selectedImage;
@@ -129,8 +195,19 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Enhanced AI processing workflow
-  Future<void> enhanceImageWithAi() async {
+  // Comparison methods
+  void toggleComparisonMode() {
+    _isComparisonMode = !_isComparisonMode;
+    notifyListeners();
+  }
+  
+  void updateComparisonSlider(double value) {
+    _comparisonSliderValue = value;
+    notifyListeners();
+  }
+
+  // ✅ ENHANCED: AI processing workflow with proper authentication
+  Future<void> enhanceImageWithAi(String modelName) async {
     if (_selectedImage == null) {
       setError('No image selected for AI enhancement');
       return;
@@ -152,16 +229,32 @@ class AppState extends ChangeNotifier {
       _processingProgress = 0.2;
       _processingStatus = 'Uploading image...';
       notifyListeners();
-      
-      final predictionResult = await WebAPIService.enhanceGeneral(_selectedImage!);
-      final predictionId = predictionResult['id'];
+
+      Map<String, dynamic> predictionResult;
+      String? predictionId;
+      if (modelName == 'General') {
+        predictionResult = await WebAPIService.enhanceGeneral(_selectedImage!);
+        predictionId = predictionResult['id'];
+      } else if (modelName == 'Portrait') {
+        // Call portrait model with direct file path
+        predictionId = await ReplicateService.enhancePortraitWithReplicate(imageUrl: _selectedImage!.path);
+        predictionResult = {'id': predictionId};
+      } else {
+        setError('Unknown model selected');
+        return;
+      }
 
       // Step 3: Poll for completion with progress updates
       _processingProgress = 0.3;
       _processingStatus = 'Processing with AI...';
       notifyListeners();
 
-      final completedResult = await _pollForResultWithProgress(predictionId);
+      if (predictionId == null) {
+        setError('Failed to create prediction. Please try again.');
+        return;
+      }
+      // FIXED: Pass model name to use correct status checking service
+      final completedResult = await _pollForResultWithProgress(predictionId, modelName);
 
       // Step 4: Download and save result
       _processingProgress = 0.8;
@@ -179,13 +272,10 @@ class AppState extends ChangeNotifier {
 
       _processingProgress = 1.0;
       _processingStatus = 'Complete!';
-      
-      // Clear status after 2 seconds
-      Future.delayed(Duration(seconds: 2), () {
+      Future.delayed(const Duration(seconds: 2), () {
         _processingStatus = '';
         notifyListeners();
       });
-
     } catch (e) {
       setError(_handleProcessingError(e));
     } finally {
@@ -199,66 +289,97 @@ class AppState extends ChangeNotifier {
     // Validate file size
     final fileSize = await _selectedImage!.length();
     if (fileSize > OperaStudioConfig.maxFileSizeBytes) {
-      throw Exception('Image too large. Maximum size is ${(OperaStudioConfig.maxFileSizeBytes / (1024 * 1024)).toInt()}MB');
+      throw Exception('Image too large. Maximum size is ${OperaStudioConfig.maxFileSizeBytes ~/ (1024 * 1024)}MB');
     }
 
-    // Check credits - for development, we'll use local credits
+    // Check credits - get fresh data from server
+    final userProfile = await AuthService.getUserProfile();
+    if (userProfile != null) {
+      _userCredits = userProfile['credits_remaining'] ?? 0;
+    }
+    
     if (_userCredits < 1) {
       throw InsufficientCreditsException('You need 1 credit to enhance this image. You have $_userCredits credits remaining.');
     }
   }
 
-  Future<Map<String, dynamic>> _pollForResultWithProgress(String predictionId) async {
-    for (int attempt = 0; attempt < 120; attempt++) {
-      final result = await WebAPIService.checkStatus(predictionId);
-      
-      if (result['status'] == 'succeeded') {
-        return result;
-      } else if (result['status'] == 'failed') {
-        throw ProcessingException('AI processing failed: ${result['error']}');
+  Future<Map<String, dynamic>> _pollForResultWithProgress(String predictionId, String modelName) async {
+    const maxAttempts = 60;
+    int attempts = 0;
+    final startTime = DateTime.now();
+    
+    while (attempts < maxAttempts) {
+      Map<String, dynamic> result;
+      if (modelName == 'General') {
+        result = await WebAPIService.checkStatus(predictionId);
+      } else if (modelName == 'Portrait') {
+        result = await ReplicateService.checkStatus(predictionId);
+      } else {
+        throw Exception('Unknown model for status polling: $modelName');
       }
+      final status = result['status'] as String;
       
       // Update progress based on status
-      if (result['status'] == 'processing') {
-        _processingProgress = 0.3 + (attempt / 120.0) * 0.4; // 30% to 70%
-        notifyListeners();
+      if (status == 'starting') {
+        _processingProgress = 0.1;
+      } else if (status == 'processing') {
+        final elapsed = DateTime.now().difference(startTime).inSeconds;
+        _processingProgress = 0.2 + (elapsed / 120.0) * 0.7; // 20% + time-based
       }
+      notifyListeners();
       
-      await Future.delayed(Duration(seconds: 1));
+      // Check completion
+      if (status == 'succeeded') return result;
+      if (status == 'failed') throw ProcessingException('Processing failed');
+      
+      // Dynamic delay: 1s for starting, 2s for processing
+      final delay = status == 'starting' ? 1 : 2;
+      await Future.delayed(Duration(seconds: delay));
+      attempts++;
     }
     
-    throw TimeoutException('Processing took too long. Please try again.');
+    throw TimeoutException('Processing timeout');
   }
 
   Future<void> _processEnhancedResult(Map<String, dynamic> result) async {
+    print('🟢 _processEnhancedResult: result = ' + result.toString());
     if (result['output'] == null) {
       throw ProcessingException('No enhanced image received');
     }
-    
-    // ✅ FIXED: Handle the correct data structure from API
-    final imageUrl = result['output']['denoised_image'];
+    // Handle the correct data structure from API
+    dynamic output = result['output'];
+    String? imageUrl;
+    if (output is String) {
+      imageUrl = output;
+    } else if (output is Map && output.containsKey('denoised_image')) {
+      imageUrl = output['denoised_image'];
+    } else if (output is List && output.isNotEmpty) {
+      imageUrl = output.first;
+    } else {
+      throw ProcessingException('Unexpected output format: ' + output.toString());
+    }
     if (imageUrl == null) {
       throw ProcessingException('No enhanced image URL found');
     }
+    print('🟢 _processEnhancedResult: imageUrl = ' + imageUrl);
     final enhancedBytes = await WebAPIService.downloadImage(imageUrl);
-    
     // Save to temporary file
     final tempDir = await getTemporaryDirectory();
     final tempFile = File('${tempDir.path}/enhanced_${DateTime.now().millisecondsSinceEpoch}.png');
     await tempFile.writeAsBytes(enhancedBytes);
-    
     _processedImage = tempFile;
-    // ✅ ENHANCED: Replace the original image with the enhanced version
+    // Replace the original image with the enhanced version
     _selectedImage = tempFile;
   }
 
   Future<void> _updateUserCreditsAndHistory() async {
-    // For development, just deduct 1 credit locally
-    _userCredits -= 1;
+    // Update user statistics in database
+    await AuthService.updateUserStats(
+      enhancementsIncrement: 1,
+    );
     
-    // In production, you would refresh from server:
-    // final creditInfo = await CreditService.getUserCredits();
-    // _userCredits = creditInfo['credits_remaining'];
+    // Update local credits
+    _userCredits -= 1;
     
     // Add to processing history
     await ProcessingHistoryService.addProcessingRecord(
@@ -282,6 +403,166 @@ class AppState extends ChangeNotifier {
       return 'Too many requests. Please wait a moment and try again.';
     } else {
       return 'Enhancement failed. Please try again.';
+    }
+  }
+
+  // ✅ FIXED: Save functionality with proper authentication
+  Future<void> saveImageToGallery({
+    SaveLocation location = SaveLocation.both,
+    ExportFormat format = ExportFormat.png,
+    int jpegQuality = 90,
+  }) async {
+    if (_processedImage == null) {
+      setError('No enhanced image to save');
+      return;
+    }
+
+    _isSaving = true;
+    notifyListeners();
+
+    try {
+      // ✅ DEBUG: Check authentication state
+      final user = AuthService.getCurrentUser();
+      print('🔍 Save Debug: getCurrentUser() returned: ${user != null ? "User ID: ${user.id}" : "null"}');
+      
+      if (user == null) {
+        print('❌ Save Debug: No authenticated user found');
+        throw Exception('Please sign in to save images.');
+      }
+
+      print('✅ Save Debug: User authenticated, proceeding with save');
+      // Get fresh user data (using the already verified user)  
+      final currentUser = user;
+
+      // Upload to cloud storage
+      final uploadResult = await CloudStorageService.uploadImage(
+        _processedImage!,
+        currentUser.id,
+        customFileName: 'enhanced_image_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
+
+      if (!uploadResult['success']) {
+        throw Exception('Failed to upload to cloud storage: ${uploadResult['error']}');
+      }
+
+      // Save metadata to database
+      final metadataSaved = await CloudStorageService.saveImageMetadata(
+        userId: currentUser.id,
+        originalFilename: uploadResult['fileName'],
+        storagePath: uploadResult['storagePath'],
+        fileSize: uploadResult['fileSize'],
+        mimeType: 'image/png',
+        processingType: 'general_enhancement',
+        creditsConsumed: 1,
+      );
+
+      if (!metadataSaved) {
+        print('⚠️ Warning: Failed to save image metadata, but continuing...');
+      }
+
+      // Add to processing history (non-blocking - don't let this break the main flow)
+      try {
+        await ProcessingHistoryService.addProcessingRecord(
+          processingType: 'general_enhancement',
+          creditsConsumed: 1,
+          status: 'completed',
+          resultUrl: uploadResult['publicUrl'],
+          originalImageUrl: _selectedImage?.path,
+          enhancementSettings: {
+            'scale': 2,
+            'sharpen': 37,
+            'denoise': 25,
+            'face_recovery': false,
+          },
+        );
+        print('✅ Processing history record added successfully');
+      } catch (e) {
+        print('⚠️ Warning: Failed to add processing history record: $e');
+        // Continue with the save process - this is not critical
+      }
+
+      // Update user statistics
+      await AuthService.updateUserStats(
+        storageIncrement: uploadResult['fileSize'] / (1024 * 1024), // Convert to MB
+      );
+
+      // Save to specified locations using new GalleryService
+      final galleryResult = await GalleryService.saveImage(
+        imageFile: _processedImage!,
+        location: location,
+        format: format,
+        jpegQuality: jpegQuality,
+        customFileName: uploadResult['fileName'].toString().replaceAll('.png', ''),
+      );
+
+      if (galleryResult['success']) {
+        if (galleryResult['galleryPath'] != null) {
+          print('✅ Image saved to gallery: ${galleryResult['galleryPath']}');
+        }
+        if (galleryResult['downloadsPath'] != null) {
+          print('✅ Image saved to downloads: ${galleryResult['downloadsPath']}');
+        }
+      } else {
+        print('⚠️ Gallery save failed: ${galleryResult['error']}');
+        // Continue anyway - cloud save succeeded
+      }
+
+      print('✅ Image saved to cloud storage: ${uploadResult['publicUrl']}');
+      clearError(); // Clear any previous error
+      
+      // Refresh saved images count
+      await refreshSavedImagesCount();
+      
+    } catch (e) {
+      print('❌ Error saving image: $e');
+      setError('Failed to save image: $e');
+      rethrow; // Re-throw so the UI can handle it
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
+
+  // Share functionality
+  bool _isSharing = false;
+  bool get isSharing => _isSharing;
+
+  void setSharing(bool sharing) {
+    _isSharing = sharing;
+    notifyListeners();
+  }
+
+  Future<bool> shareImage() async {
+    if (_processedImage == null) {
+      setError('No enhanced image to share');
+      return false;
+    }
+
+    _isSharing = true;
+    notifyListeners();
+
+    try {
+      final success = await GalleryService.shareImage(
+        imageFile: _processedImage!,
+        text: 'Enhanced with Opera Studio AI',
+        subject: 'Check out my enhanced image!',
+      );
+
+      if (!success) {
+        throw Exception('Failed to open share dialog');
+      }
+
+      print('✅ Share dialog opened successfully');
+      clearError();
+      return true;
+      
+    } catch (e) {
+      print('❌ Error sharing image: $e');
+      setError('Failed to share image: $e');
+      return false;
+    } finally {
+      _isSharing = false;
+      notifyListeners();
     }
   }
 }

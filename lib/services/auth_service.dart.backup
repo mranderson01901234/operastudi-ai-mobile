@@ -1,0 +1,205 @@
+import '../config/app_logger.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class AuthService {
+  static Future<bool> signInWithEmail(String email, String password) async {
+    try {
+      final response = await Supabase.instance.client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      
+      if (response.user != null) {
+        // Update last login timestamp in our users table
+        await _updateLastLogin(response.user!.id);
+        return true;
+      }
+      
+      return false;
+    } catch (e) {
+      AppLogger.error('Sign in error', e);
+      return false;
+    }
+  }
+
+  static Future<Map<String, dynamic>> signUpWithEmail(String email, String password) async {
+    try {
+      final response = await Supabase.instance.client.auth.signUp(
+        email: email,
+        password: password,
+      );
+      
+      if (response.user != null) {
+        // Create user profile with 10 credits
+        try {
+          AppLogger.info('Creating user profile with RLS policies');
+          await Supabase.instance.client
+              .from('users')
+              .insert({
+                'id': response.user!.id,
+                'email': email,
+                'credits_remaining': 10,
+                'total_enhancements': 0,
+                'storage_used_mb': 0.0,
+                'preferences': '{}',
+                'subscription_type': 'free',
+                'created_at': DateTime.now().toIso8601String(),
+              });
+        } catch (insertError) {
+          AppLogger.error('User profile creation failed - check RLS policies', insertError);
+          // Continue anyway - user is created in auth
+        }
+        
+        return {'success': true, 'user': response.user};
+      }
+      
+      return {'success': false, 'error': 'User creation failed'};
+    } catch (e) {
+      AppLogger.error('Sign up error', e);
+      String errorMessage = 'Sign up failed';
+      
+      if (e.toString().contains('Email address') && e.toString().contains('invalid')) {
+        errorMessage = 'Please use a valid email address (e.g., user@example.com)';
+      } else if (e.toString().contains('Password')) {
+        errorMessage = 'Password must be at least 6 characters';
+      } else if (e.toString().contains('already registered')) {
+        errorMessage = 'This email is already registered. Try signing in instead.';
+      }
+      
+      return {'success': false, 'error': errorMessage};
+    }
+  }
+
+  static Future<void> signOut() async {
+    await Supabase.instance.client.auth.signOut();
+  }
+
+  static User? getCurrentUser() {
+    return Supabase.instance.client.auth.currentUser;
+  }
+
+  static bool get isSignedIn => getCurrentUser() != null;
+
+  // ✅ ENHANCED: Get user profile with fallback creation
+  static Future<Map<String, dynamic>?> getUserProfile() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return null;
+
+    try {
+      final response = await Supabase.instance.client
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+      return response;
+    } catch (e) {
+      // If profile doesn't exist, create it
+      if (e.toString().contains('No rows') || e.toString().contains('PGRST116')) {
+        AppLogger.info('User profile not found, creating new profile');
+        return await _createUserProfile(user);
+      }
+      AppLogger.error('Get user profile error', e);
+      return null;
+    }
+  }
+
+  // ✅ NEW: Create user profile if it doesn't exist
+  static Future<Map<String, dynamic>> _createUserProfile(User user) async {
+    try {
+      await Supabase.instance.client
+          .from('users')
+          .insert({
+            'id': user.id,
+            'email': user.email ?? '',
+            'credits_remaining': 10,
+            'total_enhancements': 0,
+            'storage_used_mb': 0.0,
+            'preferences': '{}',
+            'subscription_type': 'free',
+            'created_at': DateTime.now().toIso8601String(),
+          });
+      
+      // Return the created profile
+      final response = await Supabase.instance.client
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+      return response;
+    } catch (e) {
+      AppLogger.error('Failed to create user profile', e);
+      return {};
+    }
+  }
+
+  // ✅ NEW: Update last login timestamp (in our users table, not auth.users)
+  static Future<void> _updateLastLogin(String userId) async {
+    try {
+      // We'll track this in our users table instead
+      await Supabase.instance.client
+          .from('users')
+          .update({'updated_at': DateTime.now().toIso8601String()})
+          .eq('id', userId);
+    } catch (e) {
+      AppLogger.error('Failed to update last login', e);
+    }
+  }
+
+  // ✅ FIXED: Update user statistics with correct RPC calls
+  static Future<void> updateUserStats({
+    int? enhancementsIncrement,
+    int? creditsDecrement,
+    double? storageIncrement,
+  }) async {
+    final user = getCurrentUser();
+    if (user == null) return;
+
+    try {
+      if (enhancementsIncrement != null) {
+        await Supabase.instance.client.rpc('increment', params: {
+          'table_name': 'users',
+          'column_name': 'total_enhancements',
+          'amount': enhancementsIncrement,
+          'id': user.id,
+        });
+      }
+      
+      if (creditsDecrement != null) {
+        await Supabase.instance.client.rpc('decrement', params: {
+          'table_name': 'users',
+          'column_name': 'credits_remaining',
+          'amount': creditsDecrement,
+          'id': user.id,
+        });
+      }
+      
+      if (storageIncrement != null) {
+        await Supabase.instance.client.rpc('increment', params: {
+          'table_name': 'users',
+          'column_name': 'storage_used_mb',
+          'amount': storageIncrement,
+          'id': user.id,
+        });
+      }
+    } catch (e) {
+      AppLogger.error('Failed to update user stats', e);
+    }
+  }
+
+  // ✅ NEW: Restore session (for save functionality)
+  static Future<bool> restoreSession() async {
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session != null && !session.isExpired) {
+        return true;
+      }
+      
+      // Try to refresh session
+      final response = await Supabase.instance.client.auth.refreshSession();
+      return response.session != null;
+    } catch (e) {
+      AppLogger.error('Failed to restore session', e);
+      return false;
+    }
+  }
+}

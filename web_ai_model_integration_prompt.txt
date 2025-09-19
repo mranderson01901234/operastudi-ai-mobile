@@ -1,0 +1,46 @@
+# Web Application AI Model Integration Information Prompt
+
+Please provide the following details about your web application's AI models and API environment. This information will help us plan and implement the integration of your models into the mobile app efficiently and securely.
+
+---
+
+## 1. Model Inventory
+- **List all AI models you want to integrate:**
+  - Model names, versions, and a brief description of each model's purpose.
+
+## 2. API Endpoints
+- **For each model, provide:**
+  - API endpoint URL(s)
+  - HTTP method (GET, POST, etc.)
+  - Required request headers (e.g., authentication, content-type)
+  - Example request payloads (JSON, form-data, etc.)
+  - Example response payloads (success and error cases)
+  - Rate limits or usage quotas (if any)
+
+## 3. Authentication & Security
+- **Describe the authentication method(s) required:**
+  - API keys, OAuth, JWT, etc.
+  - How are credentials issued and managed?
+  - Any IP whitelisting or CORS restrictions?
+
+## 4. Model Capabilities & Constraints
+- **For each model:**
+  - Input data requirements (formats, size limits, etc.)
+  - Output data formats
+  - Typical response times
+  - Any known limitations or special considerations
+
+## 5. Error Handling
+- **Describe how errors are communicated:**
+  - Error codes, messages, and recommended client actions
+
+## 6. Documentation & References
+- **Links to API documentation, OpenAPI/Swagger specs, or other relevant resources**
+
+## 7. Additional Notes
+- **Anything else relevant for mobile integration:**
+  - Planned changes, deprecation schedules, or upcoming features
+
+---
+
+**Please fill out this template and return it to your mobile integration team.** 

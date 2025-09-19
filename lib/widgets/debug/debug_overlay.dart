@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../../services/debug_service.dart';
-import '../../services/camera_service.dart';
 import '../../services/image_processor.dart';
-import '../../screens/api_test_screen.dart';
+import '../../services/auth_service.dart';
+
 
 class DebugOverlay extends StatefulWidget {
   final Widget child;
@@ -63,7 +63,7 @@ class _DebugOverlayState extends State<DebugOverlay> {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: Colors.white, width: 1),
           ),
-          child: Icon(
+          child: const Icon(
             Icons.bug_report,
             color: Colors.white,
             size: 20,
@@ -102,14 +102,14 @@ class _DebugOverlayState extends State<DebugOverlay> {
   
   Widget _buildDebugHeader() {
     return Container(
-      padding: EdgeInsets.all(8),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.grey.shade800,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
       ),
       child: Row(
         children: [
-          Text(
+          const Text(
             'Debug Panel',
             style: TextStyle(
               color: Colors.white,
@@ -117,22 +117,22 @@ class _DebugOverlayState extends State<DebugOverlay> {
               fontSize: 12,
             ),
           ),
-          Spacer(),
+          const Spacer(),
           _buildHeaderButton(
             'Stats',
             _showStats,
             () => setState(() => _showStats = !_showStats),
           ),
-          SizedBox(width: 4),
+          const SizedBox(width: 4),
           _buildHeaderButton(
             'Logs',
             _showLogs,
             () => setState(() => _showLogs = !_showLogs),
           ),
-          SizedBox(width: 4),
+          const SizedBox(width: 4),
           GestureDetector(
             onTap: () => setState(() => _showOverlay = false),
-            child: Icon(Icons.close, color: Colors.white, size: 16),
+            child: const Icon(Icons.close, color: Colors.white, size: 16),
           ),
         ],
       ),
@@ -143,7 +143,7 @@ class _DebugOverlayState extends State<DebugOverlay> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
           color: isActive ? Colors.blue : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
@@ -151,7 +151,7 @@ class _DebugOverlayState extends State<DebugOverlay> {
         ),
         child: Text(
           text,
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 10,
           ),
@@ -174,7 +174,7 @@ class _DebugOverlayState extends State<DebugOverlay> {
     final debugInfo = DebugService.debugInfo;
     
     return SingleChildScrollView(
-      padding: EdgeInsets.all(8),
+      padding: const EdgeInsets.all(8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -183,13 +183,13 @@ class _DebugOverlayState extends State<DebugOverlay> {
             'Debug Mode': debugInfo['isDebugMode']?.toString() ?? 'false',
             'Processors': debugInfo['numberOfProcessors']?.toString() ?? 'N/A',
           }),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           _buildInfoSection('Camera', {
             'Available': debugInfo['cameraInfo']?['cameraCount']?.toString() ?? '0',
             'Is Emulator': debugInfo['cameraInfo']?['isEmulator']?.toString() ?? 'Unknown',
             'Has Permissions': debugInfo['cameraInfo']?['hasPermissions']?.toString() ?? 'Unknown',
           }),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           FutureBuilder<Map<String, dynamic>>(
             future: _getImageProcessorStats(),
             builder: (context, snapshot) {
@@ -201,7 +201,7 @@ class _DebugOverlayState extends State<DebugOverlay> {
               });
             },
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           _buildActionButtons(),
         ],
       ),
@@ -221,15 +221,15 @@ class _DebugOverlayState extends State<DebugOverlay> {
       children: [
         Text(
           title,
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.yellow,
             fontWeight: FontWeight.bold,
             fontSize: 11,
           ),
         ),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         ...info.entries.map((entry) => Padding(
-          padding: EdgeInsets.only(left: 8, bottom: 2),
+          padding: const EdgeInsets.only(left: 8, bottom: 2),
           child: Row(
             children: [
               Expanded(
@@ -243,7 +243,7 @@ class _DebugOverlayState extends State<DebugOverlay> {
                 flex: 3,
                 child: Text(
                   entry.value,
-                  style: TextStyle(color: Colors.white, fontSize: 10),
+                  style: const TextStyle(color: Colors.white, fontSize: 10),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -261,14 +261,18 @@ class _DebugOverlayState extends State<DebugOverlay> {
           await ImageProcessor.clearCache();
           DebugService.log('🧹 Cache cleared from debug panel', level: DebugLevel.info);
         }),
-        SizedBox(width: 8),
-        _buildActionButton('API Test', () async {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => ApiTestScreen()),
+        const SizedBox(width: 8),
+        _buildActionButton('Test Auth', () async {
+          // Test authentication status
+          final user = AuthService.getCurrentUser();
+          DebugService.log(
+            user != null 
+              ? '✅ User authenticated: ${user.email}' 
+              : '❌ No authentication',
+            level: DebugLevel.info
           );
         }),
-        SizedBox(width: 8),
+        const SizedBox(width: 8),
         _buildActionButton('Export Logs', () async {
           final file = await DebugService.exportLogs();
           if (file != null) {
@@ -285,14 +289,14 @@ class _DebugOverlayState extends State<DebugOverlay> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: Colors.blue.withOpacity(0.7),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
           text,
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 9,
             fontWeight: FontWeight.bold,
@@ -308,20 +312,20 @@ class _DebugOverlayState extends State<DebugOverlay> {
     return Column(
       children: [
         Container(
-          padding: EdgeInsets.all(8),
+          padding: const EdgeInsets.all(8),
           child: Row(
             children: [
               Text(
                 'Recent Logs (${logs.length})',
-                style: TextStyle(color: Colors.white, fontSize: 11),
+                style: const TextStyle(color: Colors.white, fontSize: 11),
               ),
-              Spacer(),
+              const Spacer(),
               GestureDetector(
                 onTap: () {
                   DebugService.clearLogs();
                   setState(() {});
                 },
-                child: Text(
+                child: const Text(
                   'Clear',
                   style: TextStyle(color: Colors.red, fontSize: 10),
                 ),
@@ -371,7 +375,7 @@ class _DebugOverlayState extends State<DebugOverlay> {
     }
     
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: Colors.grey.shade800, width: 0.5)),
       ),
@@ -380,28 +384,28 @@ class _DebugOverlayState extends State<DebugOverlay> {
         children: [
           Row(
             children: [
-              Text(levelIcon, style: TextStyle(fontSize: 8)),
-              SizedBox(width: 4),
+              Text(levelIcon, style: const TextStyle(fontSize: 8)),
+              const SizedBox(width: 4),
               if (log.tag != null) ...[
                 Text(
                   '[${log.tag}]',
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.yellow,
                     fontSize: 8,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(width: 4),
+                const SizedBox(width: 4),
               ],
               Text(
                 log.timestamp.toString().substring(11, 19),
-                style: TextStyle(color: Colors.grey, fontSize: 8),
+                style: const TextStyle(color: Colors.grey, fontSize: 8),
               ),
             ],
           ),
           Text(
             log.message,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 9,
             ),
@@ -425,11 +429,11 @@ class _DebugOverlayState extends State<DebugOverlay> {
   
   Widget _buildStatsView() {
     return SingleChildScrollView(
-      padding: EdgeInsets.all(8),
+      padding: const EdgeInsets.all(8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'Performance Stats',
             style: TextStyle(
               color: Colors.yellow,
@@ -437,12 +441,12 @@ class _DebugOverlayState extends State<DebugOverlay> {
               fontSize: 11,
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           FutureBuilder<Map<String, dynamic>>(
             future: _getDetailedStats(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
-                return Center(
+                return const Center(
                   child: CircularProgressIndicator(strokeWidth: 2),
                 );
               }
@@ -457,7 +461,7 @@ class _DebugOverlayState extends State<DebugOverlay> {
                     'Cache Size': '${stats['cacheSizeMB'] ?? 0} MB',
                     'Cache Entries': stats['cacheSize']?.toString() ?? '0',
                   }),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   _buildStatCard('Memory', {
                     'Cache Usage': '${stats['cacheSizeMB'] ?? 0} MB',
                     'Log Entries': stats['logCount']?.toString() ?? '0',
@@ -484,7 +488,7 @@ class _DebugOverlayState extends State<DebugOverlay> {
   
   Widget _buildStatCard(String title, Map<String, String> stats) {
     return Container(
-      padding: EdgeInsets.all(8),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.grey.shade800.withOpacity(0.5),
         borderRadius: BorderRadius.circular(4),
@@ -495,15 +499,15 @@ class _DebugOverlayState extends State<DebugOverlay> {
         children: [
           Text(
             title,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.yellow,
               fontWeight: FontWeight.bold,
               fontSize: 10,
             ),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           ...stats.entries.map((entry) => Padding(
-            padding: EdgeInsets.only(bottom: 2),
+            padding: const EdgeInsets.only(bottom: 2),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -513,7 +517,7 @@ class _DebugOverlayState extends State<DebugOverlay> {
                 ),
                 Text(
                   entry.value,
-                  style: TextStyle(color: Colors.white, fontSize: 9),
+                  style: const TextStyle(color: Colors.white, fontSize: 9),
                 ),
               ],
             ),

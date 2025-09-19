@@ -1,0 +1,12 @@
+{
+  "name": "operamobile-netlify-functions",
+  "version": "1.0.0",
+  "description": "Netlify functions for Opera Mobile app",
+  "main": "index.js",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
