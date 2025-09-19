@@ -39,7 +39,8 @@ print_error() {
 
 # Check if running as root
 if [[ $EUID -eq 0 ]]; then
-   print_status "Running as root - proceeding with deployment"
+   print_warning "Running as root - Flutter recommends running without superuser privileges"
+   print_status "Continuing with deployment (required for file permissions)..."
 else
    print_error "This script must be run as root (use sudo)"
    exit 1
@@ -67,11 +68,21 @@ fi
 
 # Step 3: Install dependencies
 print_status "Installing Flutter dependencies..."
-flutter pub get
+if [[ $EUID -eq 0 ]]; then
+    # Run as a regular user to avoid Flutter root warnings
+    sudo -u $SUDO_USER flutter pub get
+else
+    flutter pub get
+fi
 
 # Step 4: Build web app
 print_status "Building Flutter web app..."
-flutter build web --release --web-renderer canvaskit --base-href="/mobile/"
+if [[ $EUID -eq 0 ]]; then
+    # Run as a regular user to avoid Flutter root warnings
+    sudo -u $SUDO_USER flutter build web --release --base-href="/mobile/"
+else
+    flutter build web --release --base-href="/mobile/"
+fi
 
 # Step 5: Create mobile directory if it doesn't exist
 print_status "Setting up mobile directory..."
