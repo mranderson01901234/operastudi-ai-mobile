@@ -1,0 +1,105 @@
+# ============================================
+# Nginx Configuration for Mobile Detection
+# Add this to your existing /etc/nginx/sites-available/default
+# ============================================
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name operastudio.io www.operastudio.io;
+
+    ssl_certificate /etc/letsencrypt/live/operastudio.io/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/operastudio.io/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    root /var/www/operastudio-ai-static;
+    index index.html;
+
+    # Mobile Detection Variables
+    set $mobile_rewrite do_not_perform;
+    
+    # Check for mobile user agents
+    if ($http_user_agent ~* "(Mobile|Android|iPhone|iPad|iPod|BlackBerry|Windows Phone|webOS|Opera Mini)") {
+        set $mobile_rewrite perform;
+    }
+
+    # Mobile app routing - serve Flutter web app for mobile devices
+    location / {
+        if ($mobile_rewrite = perform) {
+            rewrite ^(.*)$ /mobile$1 last;
+        }
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Mobile directory - serve Flutter web app
+    location /mobile/ {
+        alias /var/www/operastudio-ai-static/mobile/;
+        try_files $uri $uri/ /mobile/index.html;
+        
+        # Add mobile-specific headers
+        add_header X-Served-By "Mobile-App" always;
+        add_header Cache-Control "public, max-age=3600" always;
+    }
+
+    # Direct mobile access (for testing)
+    location /mobile {
+        alias /var/www/operastudio-ai-static/mobile/;
+        try_files /index.html =404;
+    }
+
+    # Proxy Netlify function calls to Express server
+    location /.netlify/functions/ {
+        proxy_pass http://localhost:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Static assets optimization
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        add_header X-Served-By "Static-Assets" always;
+    }
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+}
+
+# ============================================
+# Alternative Configuration (Simpler)
+# If the above doesn't work, use this simpler version:
+# ============================================
+
+# server {
+#     listen 443 ssl http2;
+#     listen [::]:443 ssl http2;
+#     server_name operastudio.io www.operastudio.io;
+# 
+#     # SSL configuration (same as above)...
+# 
+#     root /var/www/operastudio-ai-static;
+#     index index.html;
+# 
+#     # Check if mobile and redirect
+#     location / {
+#         if ($http_user_agent ~* "(Mobile|Android|iPhone|iPad|iPod|BlackBerry|Windows Phone)") {
+#             return 302 /mobile/;
+#         }
+#         try_files $uri $uri/ /index.html;
+#     }
+# 
+#     # Serve mobile app
+#     location /mobile/ {
+#         alias /var/www/operastudio-ai-static/mobile/;
+#         try_files $uri $uri/ /mobile/index.html;
+#     }
+# 
+#     # Netlify functions proxy (same as above)...
+# } 
