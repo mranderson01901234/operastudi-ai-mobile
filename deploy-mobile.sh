@@ -58,7 +58,27 @@ else
     cd "$DEPLOY_DIR"
 fi
 
-# Step 2: Check Flutter installation
+# Step 2: Check system resources and Flutter installation
+print_status "Checking system resources..."
+TOTAL_MEM=$(free -m | awk 'NR==2{printf "%.0f", $2}')
+AVAILABLE_MEM=$(free -m | awk 'NR==2{printf "%.0f", $7}')
+print_status "Total Memory: ${TOTAL_MEM}MB, Available: ${AVAILABLE_MEM}MB"
+
+if [ "$AVAILABLE_MEM" -lt 1024 ]; then
+    print_warning "Low memory detected (${AVAILABLE_MEM}MB available). Creating temporary swap..."
+    # Create 2GB swap file if it doesn't exist
+    if [ ! -f /swapfile_flutter ]; then
+        fallocate -l 2G /swapfile_flutter
+        chmod 600 /swapfile_flutter
+        mkswap /swapfile_flutter
+        swapon /swapfile_flutter
+        print_status "✅ Temporary 2GB swap created"
+    else
+        swapon /swapfile_flutter 2>/dev/null || true
+        print_status "✅ Existing swap activated"
+    fi
+fi
+
 print_status "Checking Flutter installation..."
 if ! command -v flutter &> /dev/null; then
     print_error "Flutter is not installed. Please install Flutter first."
@@ -75,13 +95,13 @@ else
     flutter pub get
 fi
 
-# Step 4: Build web app
-print_status "Building Flutter web app..."
+# Step 4: Build web app with memory optimizations
+print_status "Building Flutter web app with memory optimizations..."
 if [[ $EUID -eq 0 ]]; then
     # Run as a regular user to avoid Flutter root warnings
-    sudo -u $SUDO_USER flutter build web --release --base-href="/mobile/"
+    sudo -u $SUDO_USER flutter build web --release --base-href="/mobile/" --tree-shake-icons --dart-define=flutter.web.canvaskit.url=https://unpkg.com/canvaskit-wasm@latest/bin/
 else
-    flutter build web --release --base-href="/mobile/"
+    flutter build web --release --base-href="/mobile/" --tree-shake-icons --dart-define=flutter.web.canvaskit.url=https://unpkg.com/canvaskit-wasm@latest/bin/
 fi
 
 # Step 5: Create mobile directory if it doesn't exist
@@ -121,6 +141,14 @@ if [ $? -eq 0 ]; then
     print_success "✅ Nginx reloaded successfully"
 else
     print_warning "⚠️  Nginx configuration test failed - please check manually"
+fi
+
+# Cleanup temporary swap if we created it
+if [ -f /swapfile_flutter ]; then
+    print_status "Cleaning up temporary swap..."
+    swapoff /swapfile_flutter 2>/dev/null || true
+    # Don't remove the file, keep it for future builds
+    print_status "✅ Swap deactivated (keeping file for future builds)"
 fi
 
 print_success "🎉 Mobile app deployment completed!"
