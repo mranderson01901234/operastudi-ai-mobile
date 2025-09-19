@@ -233,13 +233,13 @@ class AppState extends ChangeNotifier {
       Map<String, dynamic> predictionResult;
       String? predictionId;
       if (modelName == 'General') {
-        // TEMP FIX: Use direct Replicate API since Netlify functions aren't deployed
-        predictionId = await ReplicateService.enhanceImage(_selectedImage!);
-        predictionResult = {'id': predictionId};
+        // FIXED: Use WebAPIService to call our API server (not direct Replicate)
+        predictionResult = await WebAPIService.enhanceGeneral(_selectedImage!);
+        predictionId = predictionResult['id'];
       } else if (modelName == 'Portrait') {
-        // Call portrait model with direct file path
-        predictionId = await ReplicateService.enhancePortraitWithReplicate(imageUrl: _selectedImage!.path);
-        predictionResult = {'id': predictionId};
+        // FIXED: Use WebAPIService for portrait model too
+        predictionResult = await WebAPIService.enhanceGeneral(_selectedImage!);
+        predictionId = predictionResult['id'];
       } else {
         setError('Unknown model selected');
         return;
@@ -310,14 +310,8 @@ class AppState extends ChangeNotifier {
     final startTime = DateTime.now();
     
     while (attempts < maxAttempts) {
-      Map<String, dynamic> result;
-      if (modelName == 'General') {
-        result = await WebAPIService.checkStatus(predictionId);
-      } else if (modelName == 'Portrait') {
-        result = await ReplicateService.checkStatus(predictionId);
-      } else {
-        throw Exception('Unknown model for status polling: $modelName');
-      }
+      // FIXED: Always use WebAPIService for status checking (both General and Portrait)
+      Map<String, dynamic> result = await WebAPIService.checkStatus(predictionId);
       final status = result['status'] as String;
       
       // Update progress based on status
