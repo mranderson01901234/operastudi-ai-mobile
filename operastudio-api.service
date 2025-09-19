@@ -1,0 +1,22 @@
+[Unit]
+Description=Opera Studio API Server
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/operastudio-ai-mobile
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+Environment=PORT=3001
+EnvironmentFile=/var/www/operastudio-ai-mobile/.env
+
+# Output to journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=operastudio-api
+
+[Install]
+WantedBy=multi-user.target 
