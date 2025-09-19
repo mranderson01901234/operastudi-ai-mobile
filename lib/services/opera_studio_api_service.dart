@@ -107,6 +107,9 @@ class OperaStudioAPIService {
     }
     
     // Check if token is about to expire (within 5 minutes)
+    if (session.expiresAt == null) {
+      throw Exception('Session expiration time is null');
+    }
     final expiresAt = DateTime.fromMillisecondsSinceEpoch(session.expiresAt! * 1000);
     if (expiresAt.isBefore(DateTime.now().add(const Duration(minutes: 5)))) {
       // Refresh token
