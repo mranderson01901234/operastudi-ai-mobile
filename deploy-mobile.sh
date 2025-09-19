@@ -89,16 +89,17 @@ fi
 # Step 3: Create production .env file for web build
 print_status "Creating production environment configuration..."
 
-# Check if REPLICATE_API_TOKEN is set as environment variable
+# Check for required environment variables
 if [ -z "$REPLICATE_API_TOKEN" ]; then
-    print_warning "REPLICATE_API_TOKEN environment variable not set"
-    print_status "Image processing will fail without a valid Replicate API token"
+    print_error "REPLICATE_API_TOKEN environment variable is required"
     print_status "Set it with: export REPLICATE_API_TOKEN=your_token_here"
-    REPLICATE_TOKEN=""
-else
-    print_status "✅ Using REPLICATE_API_TOKEN from environment"
-    REPLICATE_TOKEN="$REPLICATE_API_TOKEN"
+    print_status "Or copy your .env file to server and run: source .env"
+    exit 1
 fi
+
+# Use defaults for Supabase if not set
+SUPABASE_URL_DEFAULT="https://rnygtixdxbnflxflzpyr.supabase.co"
+SUPABASE_ANON_KEY_DEFAULT="sb_publishable_7jmrzEA_j5vrXtP4OWhEBA_UjDD32z3"
 
 cat > .env << EOF
 ENVIRONMENT=prod
@@ -106,11 +107,13 @@ DEBUG_MODE=false
 LOG_LEVEL=info
 API_BASE_URL=https://operastudio.io
 WEB_API_ENDPOINT=https://operastudio.io/.netlify/functions
-SUPABASE_URL=
-SUPABASE_ANON_KEY=
-REPLICATE_API_TOKEN=$REPLICATE_TOKEN
+SUPABASE_URL=\${SUPABASE_URL:-$SUPABASE_URL_DEFAULT}
+SUPABASE_ANON_KEY=\${SUPABASE_ANON_KEY:-$SUPABASE_ANON_KEY_DEFAULT}
+REPLICATE_API_TOKEN=$REPLICATE_API_TOKEN
+REPLICATE_MODEL_ID=mranderson01901234/my-app-scunetrepliactemodel
+REPLICATE_MODEL_VERSION=df9a3c1d
 EOF
-print_status "✅ Production .env created"
+print_status "✅ Production .env created with environment variables"
 
 # Step 4: Install dependencies
 print_status "Installing Flutter dependencies..."
