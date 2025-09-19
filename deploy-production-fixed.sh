@@ -147,12 +147,19 @@ else
     print_success "✅ Repository cloned from GitHub"
 fi
 
-# Step 5: Verify required environment variables
-print_status "Checking environment configuration..."
+# Step 5: Load environment variables from .env file if it exists
+print_status "Loading environment configuration..."
+if [ -f ".env" ]; then
+    print_status "Loading environment from existing .env file..."
+    export $(grep -v '^#' .env | xargs)
+    print_status "✅ Environment variables loaded from .env"
+fi
+
+# Now verify required environment variables
 if [ -z "$REPLICATE_API_TOKEN" ]; then
     print_error "REPLICATE_API_TOKEN environment variable is required"
     print_status "Set it with: export REPLICATE_API_TOKEN=your_token_here"
-    print_status "Or create .env file in the deployment directory"
+    print_status "Or add it to .env file in the deployment directory"
     exit 1
 fi
 
@@ -180,8 +187,16 @@ EOF
     print_status "✅ Production .env created"
 else
     print_status "✅ Using existing .env file"
-    # Update port in existing .env file
+    # Update port and ensure REPLICATE_API_TOKEN is set
     sed -i "s/PORT=.*/PORT=$API_PORT/" .env
+    
+    # Add or update REPLICATE_API_TOKEN if it's missing or empty
+    if ! grep -q "REPLICATE_API_TOKEN=" .env || grep -q "REPLICATE_API_TOKEN=$" .env; then
+        print_status "Updating REPLICATE_API_TOKEN in .env file..."
+        sed -i "/^REPLICATE_API_TOKEN=/d" .env
+        echo "REPLICATE_API_TOKEN=$REPLICATE_API_TOKEN" >> .env
+        print_status "✅ REPLICATE_API_TOKEN updated in .env"
+    fi
 fi
 
 # Step 7: Install Node.js dependencies
