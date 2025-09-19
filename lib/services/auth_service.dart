@@ -223,7 +223,24 @@ class AuthService {
     final session = Supabase.instance.client.auth.currentSession;
     print('🔍 AuthService Debug: getCurrentUser() called');
     print('🔍 AuthService Debug: - User: ${user != null ? "User ID: ${user.id}, Email: ${user.email}" : "null"}');
-    print('🔍 AuthService Debug: - Session: ${session != null && session.expiresAt != null ? "Valid session, expires: ${DateTime.fromMillisecondsSinceEpoch(session.expiresAt! * 1000)}" : "null"}');
+    
+    // CRITICAL FIX: Validate session expiry before returning user
+    if (session != null && session.expiresAt != null) {
+      final expiresAt = DateTime.fromMillisecondsSinceEpoch(session.expiresAt! * 1000);
+      final now = DateTime.now();
+      print('🔍 AuthService Debug: - Session expires: $expiresAt (${expiresAt.difference(now).inMinutes} minutes from now)');
+      
+      if (expiresAt.isBefore(now)) {
+        print('⚠️ AuthService: Session expired, user authentication invalid');
+        return null;  // Return null if session is expired
+      }
+      
+      print('✅ AuthService Debug: - Valid session confirmed');
+    } else {
+      print('❌ AuthService Debug: - No valid session found');
+      return null;  // Return null if no session
+    }
+    
     return user;
   }
 

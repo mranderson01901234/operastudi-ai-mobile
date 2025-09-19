@@ -232,15 +232,15 @@ class WebAPIService {
 
       // COMPREHENSIVE DEBUG LOGGING
       print('🔍 API DEBUG:');
-      print('URL: $baseUrl$replicatePredictEndpoint');
+      print('URL: $baseUrl$enhanceGeneralEndpoint');  // FIXED: Correct endpoint in logs
       print('Headers: $headers');
       print('Body: ${json.encode(requestBody)}');
-      print('🚀 PRODUCTION: Starting API call to: $baseUrl$replicatePredictEndpoint');
+      print('🚀 PRODUCTION: Starting API call to: $baseUrl$enhanceGeneralEndpoint');  // FIXED: Correct endpoint in logs
       print('📊 Request body size: ${json.encode(requestBody).length} bytes');
 
-      // FIXED: Use dynamic headers instead of hardcoded auth
+      // CRITICAL FIX: Use correct enhance-general endpoint instead of replicate-predict
       final response = await http.post(
-        Uri.parse('$baseUrl$replicatePredictEndpoint'),
+        Uri.parse('$baseUrl$enhanceGeneralEndpoint'),  // FIXED: Use enhance-general endpoint
         headers: headers,
         body: json.encode(requestBody),
       ).timeout(const Duration(seconds: 30));

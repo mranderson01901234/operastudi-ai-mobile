@@ -216,8 +216,24 @@ class ImageDisplay extends StatelessWidget {
           bytes,
           fit: BoxFit.contain,
           errorBuilder: (context, error, stackTrace) {
-            print('❌ ImageDisplay: Error loading memory image: $error');
-            return _buildErrorWidget();
+            print('⚠️ ImageDisplay: Memory image loading error (non-fatal): $error');
+            // IMPROVED: Show loading indicator instead of error widget for better UX
+            return Container(
+              height: 200,
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(color: Color(0xFF4A90E2)),
+                    SizedBox(height: 16),
+                    Text(
+                      'Loading image...',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+            );
           },
         );
       } catch (e) {
@@ -232,8 +248,24 @@ class ImageDisplay extends StatelessWidget {
         imagePath,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {
-          print('❌ ImageDisplay: Error loading network image: $error');
-          return _buildErrorWidget();
+          print('⚠️ ImageDisplay: Network image loading error (non-fatal): $error');
+          // IMPROVED: Show loading indicator instead of error widget for better UX
+          return Container(
+            height: 200,
+            child: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: Color(0xFF4A90E2)),
+                  SizedBox(height: 16),
+                  Text(
+                    'Loading image...',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+          );
         },
       );
     }
@@ -244,8 +276,24 @@ class ImageDisplay extends StatelessWidget {
         imageFile,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {
-          print('❌ ImageDisplay: Error loading local file: $error');
-          return _buildErrorWidget();
+          print('⚠️ ImageDisplay: Image loading error (non-fatal): $error');
+          // IMPROVED: Show loading indicator instead of error widget for better UX
+          return Container(
+            height: 200,
+            child: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: Color(0xFF4A90E2)),
+                  SizedBox(height: 16),
+                  Text(
+                    'Loading image...',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+          );
         },
       );
     }

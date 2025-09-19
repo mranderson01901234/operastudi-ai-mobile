@@ -169,13 +169,13 @@ class _ImprovedAuthWrapperState extends State<ImprovedAuthWrapper> {
     // Attempt auto-login with saved credentials
     _attemptAutoLogin();
     
-    // Set a timeout for authentication check
-    _timeoutTimer = Timer(const Duration(seconds: 15), () {
+    // Set a timeout for authentication check - INCREASED for production
+    _timeoutTimer = Timer(const Duration(seconds: 60), () {  // Increased from 15s to 60s
       if (mounted) {
         setState(() {
           _hasTimedOut = true;
         });
-        print('⚠️ Authentication check timed out after 15s, showing login screen');
+        print('⚠️ Authentication check timed out after 60s, showing login screen');
       }
     });
   }
@@ -205,10 +205,21 @@ class _ImprovedAuthWrapperState extends State<ImprovedAuthWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    // If timed out, show login screen
+        // If timed out, show login screen - but check auth state first
     if (_hasTimedOut) {
-      print('⚠️ CRITICAL: Timeout forced login screen - this might be causing auth issues!');
-      return const LoginScreen();
+      // CRITICAL FIX: Check if user is actually authenticated before forcing logout
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      final currentSession = Supabase.instance.client.auth.currentSession;
+      
+      if (currentUser != null && currentSession != null) {
+        print('⚠️ Timeout reached but user is authenticated - continuing with app');
+        // Cancel timeout and continue with authenticated flow
+        _timeoutTimer?.cancel();
+        _hasTimedOut = false;
+      } else {
+        print('⚠️ CRITICAL: Timeout reached and no valid authentication - showing login screen');
+        return const LoginScreen();
+      }
     }
 
     return StreamBuilder<AuthState>(
