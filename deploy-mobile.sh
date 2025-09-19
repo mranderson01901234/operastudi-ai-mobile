@@ -64,19 +64,26 @@ TOTAL_MEM=$(free -m | awk 'NR==2{printf "%.0f", $2}')
 AVAILABLE_MEM=$(free -m | awk 'NR==2{printf "%.0f", $7}')
 print_status "Total Memory: ${TOTAL_MEM}MB, Available: ${AVAILABLE_MEM}MB"
 
-if [ "$AVAILABLE_MEM" -lt 1024 ]; then
+if [ "$AVAILABLE_MEM" -lt 2048 ]; then
     print_warning "Low memory detected (${AVAILABLE_MEM}MB available). Creating temporary swap..."
-    # Create 2GB swap file if it doesn't exist
+    # Create 4GB swap file for better performance
     if [ ! -f /swapfile_flutter ]; then
-        fallocate -l 2G /swapfile_flutter
+        print_status "Creating 4GB swap file (this may take a moment)..."
+        fallocate -l 4G /swapfile_flutter
         chmod 600 /swapfile_flutter
         mkswap /swapfile_flutter
         swapon /swapfile_flutter
-        print_status "✅ Temporary 2GB swap created"
+        print_status "✅ Temporary 4GB swap created"
     else
         swapon /swapfile_flutter 2>/dev/null || true
         print_status "✅ Existing swap activated"
     fi
+    
+    # Additional memory optimizations
+    print_status "Applying memory optimizations..."
+    echo 3 > /proc/sys/vm/drop_caches  # Clear system caches
+    echo 10 > /proc/sys/vm/swappiness  # Prefer RAM over swap
+    print_status "✅ System caches cleared and swappiness optimized"
 fi
 
 print_status "Checking Flutter installation..."
@@ -115,23 +122,51 @@ REPLICATE_MODEL_VERSION=df9a3c1d
 EOF
 print_status "✅ Production .env created with environment variables"
 
-# Step 4: Install dependencies
-print_status "Installing Flutter dependencies..."
+# Step 4: Clean and install dependencies
+print_status "Cleaning Flutter cache and installing dependencies..."
 if [[ $EUID -eq 0 ]]; then
     # Run as a regular user to avoid Flutter root warnings
+    sudo -u $SUDO_USER flutter clean
     sudo -u $SUDO_USER flutter pub get
 else
+    flutter clean
     flutter pub get
 fi
 
-# Step 5: Build web app with memory optimizations
-print_status "Building Flutter web app with memory optimizations..."
+# Step 5: Build web app with aggressive memory optimizations
+print_status "Building Flutter web app with aggressive memory optimizations..."
+
+# Set memory-friendly environment variables for the build
+export FLUTTER_BUILD_MODE=release
+export FLUTTER_WEB_USE_SKIA=false
+export DART_VM_OPTIONS="--old_gen_heap_size=512"
+
 if [[ $EUID -eq 0 ]]; then
     # Run as a regular user to avoid Flutter root warnings
-    sudo -u $SUDO_USER flutter build web --release --base-href="/mobile/" --tree-shake-icons --no-source-maps --dart-define=flutter.web.canvaskit.url=https://unpkg.com/canvaskit-wasm@latest/bin/
+    sudo -u $SUDO_USER -E flutter build web \
+        --release \
+        --base-href="/mobile/" \
+        --tree-shake-icons \
+        --no-source-maps \
+        --split-debug-info=debug_symbols \
+        --obfuscate \
+        --dart-define=flutter.web.canvaskit.url=https://unpkg.com/canvaskit-wasm@latest/bin/ \
+        --dart-define=flutter.web.use_skia=false
 else
-    flutter build web --release --base-href="/mobile/" --tree-shake-icons --no-source-maps --dart-define=flutter.web.canvaskit.url=https://unpkg.com/canvaskit-wasm@latest/bin/
+    flutter build web \
+        --release \
+        --base-href="/mobile/" \
+        --tree-shake-icons \
+        --no-source-maps \
+        --split-debug-info=debug_symbols \
+        --obfuscate \
+        --dart-define=flutter.web.canvaskit.url=https://unpkg.com/canvaskit-wasm@latest/bin/ \
+        --dart-define=flutter.web.use_skia=false
 fi
+
+# Clean up debug symbols to save space
+rm -rf debug_symbols 2>/dev/null || true
+print_status "✅ Build completed and debug symbols cleaned up"
 
 # Step 6: Create mobile directory if it doesn't exist
 print_status "Setting up mobile directory..."
