@@ -86,7 +86,21 @@ if ! command -v flutter &> /dev/null; then
     exit 1
 fi
 
-# Step 3: Install dependencies
+# Step 3: Create production .env file for web build
+print_status "Creating production environment configuration..."
+cat > .env << 'EOF'
+ENVIRONMENT=prod
+DEBUG_MODE=false
+LOG_LEVEL=info
+API_BASE_URL=https://operastudio.io
+WEB_API_ENDPOINT=https://operastudio.io/.netlify/functions
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+REPLICATE_API_TOKEN=
+EOF
+print_status "✅ Production .env created"
+
+# Step 4: Install dependencies
 print_status "Installing Flutter dependencies..."
 if [[ $EUID -eq 0 ]]; then
     # Run as a regular user to avoid Flutter root warnings
@@ -95,7 +109,7 @@ else
     flutter pub get
 fi
 
-# Step 4: Build web app with memory optimizations
+# Step 5: Build web app with memory optimizations
 print_status "Building Flutter web app with memory optimizations..."
 if [[ $EUID -eq 0 ]]; then
     # Run as a regular user to avoid Flutter root warnings
@@ -104,20 +118,20 @@ else
     flutter build web --release --base-href="/mobile/" --tree-shake-icons --dart-define=flutter.web.canvaskit.url=https://unpkg.com/canvaskit-wasm@latest/bin/
 fi
 
-# Step 5: Create mobile directory if it doesn't exist
+# Step 6: Create mobile directory if it doesn't exist
 print_status "Setting up mobile directory..."
 mkdir -p "$STATIC_DIR"
 
-# Step 6: Copy built files to static directory
+# Step 7: Copy built files to static directory
 print_status "Deploying files to static directory..."
 cp -r build/web/* "$STATIC_DIR/"
 
-# Step 7: Set proper permissions
+# Step 8: Set proper permissions
 print_status "Setting file permissions..."
 chown -R www-data:www-data "$STATIC_DIR"
 chmod -R 755 "$STATIC_DIR"
 
-# Step 8: Verify deployment
+# Step 9: Verify deployment
 print_status "Verifying deployment..."
 if [ -f "$STATIC_DIR/index.html" ]; then
     print_success "✅ Mobile app deployed successfully!"
@@ -131,7 +145,7 @@ else
     exit 1
 fi
 
-# Step 9: Test web server configuration
+# Step 10: Test web server configuration
 print_status "Testing Nginx configuration..."
 nginx -t
 if [ $? -eq 0 ]; then

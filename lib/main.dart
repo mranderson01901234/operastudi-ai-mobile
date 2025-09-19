@@ -14,20 +14,24 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // For web builds, .env file might not be available, so we'll use defaults
   try {
-    final envPath = File('.env').absolute.path;
-    print('🔍 Attempting to load .env from: ' + envPath);
-    await dotenv.load(fileName: envPath);
-    print('✅ .env loaded from: ' + envPath);
+    await dotenv.load();
+    print('✅ .env loaded successfully');
   } catch (e) {
-    print('❌ Failed to load .env from absolute path: $e');
-    try {
-      await dotenv.load();
-      print('✅ .env loaded from default relative path.');
-    } catch (e2) {
-      print('❌ Failed to load .env from default relative path: $e2');
-      throw Exception('FATAL: .env file not found. Please ensure it exists in the project root.');
-    }
+    print('⚠️ .env file not found, using environment defaults for web build: $e');
+    // Initialize empty dotenv for web builds
+    dotenv.testLoad(fileInput: '''
+ENVIRONMENT=prod
+DEBUG_MODE=false
+LOG_LEVEL=info
+API_BASE_URL=https://operastudio.io
+WEB_API_ENDPOINT=https://operastudio.io/.netlify/functions
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+REPLICATE_API_TOKEN=
+''');
   }
 
   try {
