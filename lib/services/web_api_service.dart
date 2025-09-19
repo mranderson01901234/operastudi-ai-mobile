@@ -201,15 +201,37 @@ class WebAPIService {
   // Enhance image using General Enhancement model - PRODUCTION MODE
   static Future<Map<String, dynamic>> enhanceGeneral(File imageFile) async {
     try {
-      // FIXED: Add fallback authentication for development
-      final session = _supabase.auth.currentSession;
+      // CRITICAL FIX: Get fresh session with validation
+      var session = _supabase.auth.currentSession;
+      
+      // Check if session is expired and refresh if needed
+      if (session != null && session.expiresAt != null) {
+        final expiresAt = DateTime.fromMillisecondsSinceEpoch(session.expiresAt! * 1000);
+        final now = DateTime.now();
+        
+        if (expiresAt.isBefore(now.add(const Duration(minutes: 5)))) {
+          print('🔄 Session expires soon, refreshing...');
+          try {
+            final refreshResult = await _supabase.auth.refreshSession();
+            if (refreshResult.session != null) {
+              session = refreshResult.session!;
+              print('✅ Session refreshed successfully');
+            }
+          } catch (e) {
+            print('❌ Session refresh failed: $e');
+            throw Exception('Session expired. Please sign in again.');
+          }
+        }
+      }
+      
       Map<String, String> headers = {
         'Content-Type': 'application/json',
       };
 
       if (session != null) {
         headers['Authorization'] = 'Bearer ${session.accessToken}';
-        print('🔐 Using authenticated session: ${session.user.email}');
+        print('🔐 Using authenticated session: ${session.user?.email}');
+        print('🔍 Token first 20 chars: ${session.accessToken.substring(0, 20)}...');
       } else {
         print('❌ No authentication session - API call will fail');
         throw Exception('User must be authenticated to use AI enhancement');
