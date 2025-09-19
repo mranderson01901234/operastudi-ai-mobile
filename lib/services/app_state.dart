@@ -233,8 +233,9 @@ class AppState extends ChangeNotifier {
       Map<String, dynamic> predictionResult;
       String? predictionId;
       if (modelName == 'General') {
-        predictionResult = await WebAPIService.enhanceGeneral(_selectedImage!);
-        predictionId = predictionResult['id'];
+        // TEMP FIX: Use direct Replicate API since Netlify functions aren't deployed
+        predictionId = await ReplicateService.enhanceImage(_selectedImage!);
+        predictionResult = {'id': predictionId};
       } else if (modelName == 'Portrait') {
         // Call portrait model with direct file path
         predictionId = await ReplicateService.enhancePortraitWithReplicate(imageUrl: _selectedImage!.path);

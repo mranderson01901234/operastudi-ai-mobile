@@ -88,7 +88,19 @@ fi
 
 # Step 3: Create production .env file for web build
 print_status "Creating production environment configuration..."
-cat > .env << 'EOF'
+
+# Check if REPLICATE_API_TOKEN is set as environment variable
+if [ -z "$REPLICATE_API_TOKEN" ]; then
+    print_warning "REPLICATE_API_TOKEN environment variable not set"
+    print_status "Image processing will fail without a valid Replicate API token"
+    print_status "Set it with: export REPLICATE_API_TOKEN=your_token_here"
+    REPLICATE_TOKEN=""
+else
+    print_status "✅ Using REPLICATE_API_TOKEN from environment"
+    REPLICATE_TOKEN="$REPLICATE_API_TOKEN"
+fi
+
+cat > .env << EOF
 ENVIRONMENT=prod
 DEBUG_MODE=false
 LOG_LEVEL=info
@@ -96,7 +108,7 @@ API_BASE_URL=https://operastudio.io
 WEB_API_ENDPOINT=https://operastudio.io/.netlify/functions
 SUPABASE_URL=
 SUPABASE_ANON_KEY=
-REPLICATE_API_TOKEN=
+REPLICATE_API_TOKEN=$REPLICATE_TOKEN
 EOF
 print_status "✅ Production .env created"
 
