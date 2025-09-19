@@ -68,3 +68,4 @@ app.*.map.json
 # Test files with sensitive data
 test_*api*.dart
 test_*token*.dart
+node_modules/
