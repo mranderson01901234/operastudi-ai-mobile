@@ -113,9 +113,9 @@ fi
 print_status "Building Flutter web app with memory optimizations..."
 if [[ $EUID -eq 0 ]]; then
     # Run as a regular user to avoid Flutter root warnings
-    sudo -u $SUDO_USER flutter build web --release --base-href="/mobile/" --tree-shake-icons --dart-define=flutter.web.canvaskit.url=https://unpkg.com/canvaskit-wasm@latest/bin/
+    sudo -u $SUDO_USER flutter build web --release --base-href="/mobile/" --tree-shake-icons --no-source-maps --dart-define=flutter.web.canvaskit.url=https://unpkg.com/canvaskit-wasm@latest/bin/
 else
-    flutter build web --release --base-href="/mobile/" --tree-shake-icons --dart-define=flutter.web.canvaskit.url=https://unpkg.com/canvaskit-wasm@latest/bin/
+    flutter build web --release --base-href="/mobile/" --tree-shake-icons --no-source-maps --dart-define=flutter.web.canvaskit.url=https://unpkg.com/canvaskit-wasm@latest/bin/
 fi
 
 # Step 6: Create mobile directory if it doesn't exist
