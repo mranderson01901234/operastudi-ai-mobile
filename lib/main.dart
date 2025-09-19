@@ -21,17 +21,18 @@ void main() async {
     print('✅ .env loaded successfully');
   } catch (e) {
     print('⚠️ .env file not found, using environment defaults for web build: $e');
-    // Initialize empty dotenv for web builds
-    dotenv.testLoad(fileInput: '''
-ENVIRONMENT=prod
-DEBUG_MODE=false
-LOG_LEVEL=info
-API_BASE_URL=https://operastudio.io
-WEB_API_ENDPOINT=https://operastudio.io/.netlify/functions
-SUPABASE_URL=
-SUPABASE_ANON_KEY=
-REPLICATE_API_TOKEN=
-''');
+    // Initialize dotenv with default values for web builds
+    dotenv.env.addAll({
+      'ENVIRONMENT': 'prod',
+      'DEBUG_MODE': 'false',
+      'LOG_LEVEL': 'info',
+      'API_BASE_URL': 'https://operastudio.io',
+      'WEB_API_ENDPOINT': 'https://operastudio.io/.netlify/functions',
+      'SUPABASE_URL': '',
+      'SUPABASE_ANON_KEY': '',
+      'REPLICATE_API_TOKEN': '',
+    });
+    print('✅ Default environment values loaded');
   }
 
   try {
