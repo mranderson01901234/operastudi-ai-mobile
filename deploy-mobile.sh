@@ -71,7 +71,7 @@ flutter pub get
 
 # Step 4: Build web app
 print_status "Building Flutter web app..."
-flutter build web --release --web-renderer canvaskit
+flutter build web --release --web-renderer canvaskit --base-href="/mobile/"
 
 # Step 5: Create mobile directory if it doesn't exist
 print_status "Setting up mobile directory..."
