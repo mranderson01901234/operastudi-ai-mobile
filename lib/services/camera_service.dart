@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -16,7 +17,29 @@ class WebFile {
   
   Future<Uint8List> readAsBytes() async => _bytes;
   
-  String get path => 'web_file_$_name';
+  String get path {
+    // Return a data URL for proper web display
+    final base64String = base64Encode(_bytes);
+    final mimeType = _getMimeType(_name);
+    return 'data:$mimeType;base64,$base64String';
+  }
+  
+  String _getMimeType(String fileName) {
+    final extension = fileName.toLowerCase().split('.').last;
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      case 'webp':
+        return 'image/webp';
+      default:
+        return 'image/jpeg'; // Default fallback
+    }
+  }
   
   int lengthSync() => _bytes.length;
   
