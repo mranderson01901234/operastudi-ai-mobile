@@ -36,6 +36,10 @@ class WebFile {
         return 'image/gif';
       case 'webp':
         return 'image/webp';
+      case 'heic':
+      case 'heif':
+        // HEIC files from iPhone - convert to JPEG for web compatibility
+        return 'image/jpeg';
       default:
         return 'image/jpeg'; // Default fallback
     }
@@ -249,10 +253,20 @@ class CameraService {
       if (kIsWeb) {
         // For web, create a File from the bytes
         print('🌐 CameraService: Web detected, creating web file');
+        print('📱 CameraService: Image name: ${image.name}');
+        print('📱 CameraService: Image MIME type: ${image.mimeType}');
+        
         final bytes = await image.readAsBytes();
         print('📸 CameraService: Image bytes: ${bytes.length} bytes');
+        
+        // Check if it's a HEIC file (common on iPhone)
+        if (image.name.toLowerCase().contains('heic') || 
+            image.mimeType?.contains('heic') == true) {
+          print('📱 CameraService: HEIC file detected from iPhone');
+        }
+        
         final webFile = _createWebFile(bytes, image.name);
-        print('✅ CameraService: Web file created: ${webFile.path}');
+        print('✅ CameraService: Web file created with data URL length: ${webFile.path.length}');
         return webFile;
       }
       
